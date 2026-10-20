@@ -114,6 +114,9 @@
     width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff;
     font-size: 11px; font-weight: 700; margin-left: -4px; border: 2px solid var(--card); background: var(--c, #579dff);
   }
+  .grip { cursor: grab; padding: 2px 6px; font-size: 18px; line-height: 1; color: var(--muted); touch-action: none; user-select: none; -webkit-user-select: none; }
+  .ghost { position: fixed; z-index: 50; pointer-events: none; opacity: .92; transform: rotate(2deg); box-shadow: 0 8px 24px rgba(0,0,0,.45); margin: 0; }
+  @media (pointer: coarse) { .card, .grip { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; } }
   .add-card, .add-list-btn {
     margin-top: 6px; text-align: left; background: transparent; border: 0; color: var(--muted);
     padding: 7px 8px; border-radius: 8px;
@@ -530,6 +533,70 @@
     return true;
   }
 
+  // ---------- Arrastre táctil ----------
+  // El arrastre nativo de HTML5 no funciona con el dedo, así que en pantallas táctiles se gestiona a mano.
+  const touchUI = matchMedia('(pointer: coarse)').matches;
+  let suppressClick = 0;
+
+  function touchDrag(node, type, id, { root, delay, label }) {
+    let timer, scroller, active = false, ghost, sx, sy, lx, ly;
+    const target = () => { const t = document.elementFromPoint(lx, ly); return t && t.closest('.list'); };
+    const clearMarks = () => { clearDropMarks(); document.querySelectorAll('.over-list').forEach(n => n.classList.remove('over-list')); };
+
+    function move() {
+      ghost.style.left = lx - ghost.offsetWidth / 2 + 'px';
+      ghost.style.top = ly - 24 + 'px';
+      clearMarks();
+      const l = target();
+      if (!l) return;
+      if (type === 'card') { const b = cardAfter(l.querySelector('.cards'), ly); if (b) b.classList.add('drop-before'); l.classList.add('over-list'); }
+      else if (l.dataset.id !== id) l.classList.add('over-list');
+    }
+    function start() {
+      active = true; drag = { type, id };
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      root.classList.add('dragging');
+      ghost = type === 'card' ? root.cloneNode(true) : el('div', { class: 'card' }, '↕ ' + label);
+      ghost.classList.remove('dragging'); ghost.classList.add('ghost');
+      ghost.style.width = Math.min(root.offsetWidth, 320) + 'px';
+      document.body.append(ghost);
+      move();
+      scroller = setInterval(() => {
+        const r = app.getBoundingClientRect();
+        if (ly < r.top + 70) app.scrollTop -= 14; else if (ly > r.bottom - 70) app.scrollTop += 14; else return;
+        move();
+      }, 30);
+      if (navigator.vibrate) navigator.vibrate(15);
+    }
+    function end(e) {
+      clearTimeout(timer);
+      if (!active) return;
+      active = false; clearInterval(scroller);
+      const l = e.type === 'touchend' ? target() : null;
+      ghost.remove(); clearMarks();
+      if (l) {
+        if (type === 'card') { const b = cardAfter(l.querySelector('.cards'), ly); dropCard(id, l.dataset.id, b && b.dataset.id); }
+        else dropList(id, l.dataset.id);
+      }
+      drag = null; suppressClick = Date.now() + 500;
+      renderBoard();
+    }
+
+    node.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) return;
+      sx = lx = e.touches[0].clientX; sy = ly = e.touches[0].clientY;
+      if (delay) timer = setTimeout(start, delay); else start();
+    }, { passive: true });
+    node.addEventListener('touchmove', e => {
+      lx = e.touches[0].clientX; ly = e.touches[0].clientY;
+      if (!active) { if (Math.hypot(lx - sx, ly - sy) > 10) clearTimeout(timer); return; }
+      e.preventDefault();
+      move();
+    }, { passive: false });
+    node.addEventListener('touchend', end);
+    node.addEventListener('touchcancel', end);
+  }
+
   // ---------- Render del tablero ----------
   function renderBoard() {
     S.dirty = false;
@@ -550,14 +617,16 @@
       onchange: e => { list.title = e.target.value.trim() || 'Sin título'; e.target.value = list.title; run(sb.from('lists').update({ title: list.title }).eq('id', list.id)); },
       onkeydown: e => { if (e.key === 'Enter') e.target.blur(); },
     });
-    const head = el('div', { class: 'list-head', draggable: true },
-      title, el('span', { class: 'count' }, String(cards.length)),
+    const grip = touchUI ? el('span', { class: 'grip', title: 'Arrastrar lista', 'aria-label': 'Arrastrar lista' }, '⠿') : null;
+    const head = el('div', { class: 'list-head', draggable: !touchUI },
+      grip, title, el('span', { class: 'count' }, String(cards.length)),
       el('button', { class: 'icon-btn', title: 'Eliminar lista', onclick: () => {
         if (!confirm(`¿Eliminar la lista "${list.title}" y sus ${cards.length} tarjetas?`)) return;
         S.lists = S.lists.filter(l => l !== list); S.cards = S.cards.filter(c => c.list_id !== list.id);
         renderBoard(); run(sb.from('lists').delete().eq('id', list.id));
       } }, '🗑'));
 
+    if (grip) touchDrag(grip, 'list', list.id, { root, delay: 0, label: list.title });
     head.addEventListener('dragstart', e => {
       if (e.target !== head) return;
       drag = { type: 'list', id: list.id };
@@ -609,7 +678,7 @@
   }
 
   function renderCard(card) {
-    const n = el('article', { class: 'card', draggable: true, 'data-id': card.id, tabindex: 0 });
+    const n = el('article', { class: 'card', draggable: !touchUI, 'data-id': card.id, tabindex: 0 });
     if (card.labels.length) n.append(el('div', { class: 'labels' }, card.labels.map(c => el('span', { class: 'label', style: `background:${c}` }))));
     n.append(el('div', {}, card.title));
     const badges = [];
@@ -623,7 +692,8 @@
     if (who.length) badges.push(el('span', { class: 'avatars' }, who.map(u => avatar(u, nameOf(profileOf(u))))));
     if (badges.length) n.append(el('div', { class: 'badges' }, badges));
 
-    n.addEventListener('click', () => openCard(card.id));
+    n.addEventListener('click', () => { if (Date.now() > suppressClick) openCard(card.id); });
+    touchDrag(n, 'card', card.id, { root: n, delay: 300 });
     n.addEventListener('keydown', e => { if (e.key === 'Enter') openCard(card.id); });
     n.addEventListener('dragstart', e => {
       drag = { type: 'card', id: card.id };
