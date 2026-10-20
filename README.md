@@ -34,6 +34,7 @@ Cada cambio que necesita tocar la base de datos viene en un archivo de `supabase
 1. `schema.sql` (tablas y seguridad)
 2. `notifications.sql` (avisos por correo)
 3. `update_2.sql` (archivar y nombres de etiquetas)
+4. `update_3.sql` (historial de actividad y más avisos por correo)
 
 ## Funciones de la app
 
@@ -42,11 +43,15 @@ Cada cambio que necesita tocar la base de datos viene en un archivo de `supabase
 - **Filtros** por persona, etiqueta y vencidas; búsqueda por texto.
 - **Etiquetas con nombre** por tablero (en **👥 Miembros → Nombre de las etiquetas**).
 - **Calendario** del tablero con las fechas límite (en el móvil se muestra como agenda).
+- **Historial** de cada tarjeta y de todo el tablero (**📜 Actividad**): quién creó, movió, completó, archivó o asignó, y cuándo. Se conservan 180 días.
+- **Menciones**: en un comentario, el menú **@ Mencionar** avisa por correo a esa persona.
 - **App instalable**: en el móvil, abre la web y elige *Añadir a pantalla de inicio* (iPhone: botón Compartir) para usarla a pantalla completa.
 
 ## Avisos por correo
 
 - Al **asignar una tarjeta**, la persona asignada recibe un correo (no se avisa a quien se asigna a sí mismo).
+- Al **comentar** una tarjeta, se avisa por correo a las personas asignadas; al **mencionar con @usuario** (la parte del correo antes de la @), a la persona mencionada.
+- Al **cambiar la fecha límite** de una tarjeta asignada, se avisa a sus asignados.
 - **Cada mañana (8:00, hora de Colombia)** cada persona recibe un solo correo con sus tareas vencidas, las que vencen hoy y las de mañana. Se ignoran las tarjetas marcadas como **Completada**, las que están en una lista llamada "Hecho / Terminado / Completado" y las vencidas hace más de 7 días.
 
 Los correos se envían con [Resend](https://resend.com) (gratis hasta 3.000 al mes) desde la propia base de datos.

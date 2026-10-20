@@ -187,6 +187,12 @@
   .lbl.on { border-color: var(--text); }
   .lbl .dot { width: 22px; height: 14px; border-radius: 3px; }
 
+  .mention { color: var(--accent); }
+  .act { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .act .when { color: var(--muted); font-size: 12px; }
+  .act.link { cursor: pointer; }
+  .act.link:hover { background: var(--card-hover); }
+
   /* Mis tareas */
   .tasks { max-width: 760px; margin: 0 auto; padding: 20px 14px 40px; }
   .tasks h2 { margin: 0; font-size: 18px; }
@@ -242,6 +248,7 @@
     <button class="btn" id="filterBtn" title="Filtros">⚑<span class="t"> Filtros</span></button>
     <button class="btn" id="membersBtn" title="Miembros y ajustes">👥<span class="t"> Miembros</span></button>
     <button class="btn" id="archiveBtn" title="Archivados">🗄<span class="t"> Archivados</span></button>
+    <button class="btn" id="activityBtn" title="Historial de actividad">📜<span class="t"> Actividad</span></button>
     <button class="btn" id="exportBtn" title="Descargar copia del tablero">⬇<span class="t"> Exportar</span></button>
     <input type="search" id="search" placeholder="Buscar…" aria-label="Buscar tarjetas">
   </span>
@@ -259,6 +266,7 @@
 <dialog id="cardDialog"><div class="modal" id="cardModal"></div></dialog>
 <dialog id="membersDialog"><div class="modal" id="membersModal"></div></dialog>
 <dialog id="archiveDialog"><div class="modal" id="archiveModal"></div></dialog>
+<dialog id="activityDialog"><div class="modal" id="activityModal"></div></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
@@ -351,6 +359,7 @@
 
   const isOwner = () => S.members.some(m => m.user_id === S.user.id && m.role === 'owner');
   const labelName = c => ((S.board && S.board.label_names) || {})[c] || '';
+  const handleOf = m => ((m.profiles && m.profiles.email) || '').split('@')[0].toLowerCase();
   const profileOf = uid => (S.members.find(m => m.user_id === uid) || {}).profiles;
 
   // ---------- Navegación ----------
@@ -580,6 +589,7 @@
     if ($('#cardDialog').open) $('#cardDialog').close();
     if ($('#membersDialog').open) $('#membersDialog').close();
     if ($('#archiveDialog').open) $('#archiveDialog').close();
+    if ($('#activityDialog').open) $('#activityDialog').close();
   }
 
   function subscribe(id) {
@@ -1057,8 +1067,22 @@
       S.cards.sort(byPos);
     } }, S.lists.filter(l => !l.archived).map(l => el('option', { value: l.id, selected: l === list }, l.title)));
 
+    const actBox = el('div', { class: 'muted' }, 'Cargando…');
+    const actDetails = el('details', {}, el('summary', { class: 'muted', style: 'cursor:pointer' }, 'Actividad de la tarjeta'), actBox);
+    actDetails.addEventListener('toggle', async () => {
+      if (!actDetails.open || actDetails.dataset.loaded) return;
+      actDetails.dataset.loaded = '1';
+      const { data, error } = await sb.from('activity').select('id,card_id,kind,detail,created_at,user_id,profiles(email,display_name)')
+        .eq('card_id', card.id).order('created_at', { ascending: false }).limit(30);
+      actBox.replaceChildren(...[error ? errMsg(error) : data.length ? data.map(a => activityLine(a)) : 'Todavía no hay actividad.'].flat(Infinity));
+    });
     const commentsBox = el('div', { 'data-comments': '1' });
     const newComment = el('textarea', { placeholder: 'Escribe un comentario…', maxLength: 5000, style: 'min-height:56px' });
+    const mention = el('select', { class: 'btn', 'aria-label': 'Mencionar a alguien', onchange: e => {
+      const h = e.target.value; if (!h) return;
+      const t = newComment, at = t.selectionStart == null ? t.value.length : t.selectionStart;
+      t.setRangeText('@' + h + ' ', at, t.selectionEnd == null ? at : t.selectionEnd, 'end'); t.focus(); e.target.value = '';
+    } }, el('option', { value: '' }, '@ Mencionar'), S.members.filter(m => m.user_id !== S.user.id).map(m => el('option', { value: handleOf(m) }, nameOf(m.profiles, 'Usuario'))));
     const sendComment = el('button', { class: 'btn primary', onclick: async () => {
       const body = newComment.value.trim(); if (!body) return;
       sendComment.disabled = true;
@@ -1079,7 +1103,9 @@
       el('div', {}, el('h3', {}, 'Descripción'), desc),
       el('div', {}, el('h3', {}, 'Checklist'), checkBox),
       el('div', {}, el('h3', {}, 'Mover a'), moveSel),
-      el('div', {}, el('h3', {}, 'Comentarios'), newComment, el('div', { class: 'row', style: 'margin-top:6px' }, sendComment), commentsBox),
+      el('div', {}, el('h3', {}, 'Comentarios'), newComment, el('div', { class: 'row', style: 'margin-top:6px;flex-wrap:wrap' }, sendComment, mention),
+        el('p', { class: 'muted', style: 'margin:6px 0 0;font-size:12px' }, 'Las personas asignadas y las que menciones con @ reciben un correo.'), commentsBox),
+      actDetails,
       el('div', { class: 'modal-foot' },
         el('button', { class: 'btn', onclick: () => {
           patchCard(card, { archived: true }, true); toast('Tarjeta archivada. Puedes recuperarla en 🗄 Archivados.'); cardDlg.close();
@@ -1088,6 +1114,11 @@
     cardDlg.showModal();
     loadComments(card.id);
   }
+
+  const renderMentions = body => {
+    const handles = new Set(S.members.map(handleOf));
+    return body.split(/(@[\w.+-]+)/g).map(part => part.startsWith('@') && handles.has(part.slice(1).replace(/\.+$/, '').toLowerCase()) ? el('b', { class: 'mention' }, part) : part);
+  };
 
   async function loadComments(cardId) {
     const { data, error } = await sb.from('comments').select('id, body, created_at, user_id, profiles(email, display_name)')
@@ -1102,7 +1133,7 @@
             c.user_id === S.user.id ? el('button', { class: 'icon-btn', title: 'Borrar comentario', onclick: async () => {
               if (await run(sb.from('comments').delete().eq('id', c.id))) loadComments(cardId);
             } }, '🗑') : null),
-          el('div', { class: 'text' }, c.body)));
+          el('div', { class: 'text' }, renderMentions(c.body))));
     }));
   }
 
@@ -1166,6 +1197,51 @@
             } }, 'Salir del tablero'),
         el('button', { class: 'btn primary', onclick: () => memDlg.close() }, 'Cerrar')));
   }
+
+  // ---------- Historial de actividad ----------
+  const shortDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('es', { day: 'numeric', month: 'short' }) : 'sin fecha';
+  function describe(a) {
+    const d = a.detail || {}, t = `«${d.title || ''}»`;
+    switch (a.kind) {
+      case 'card_created': return `creó ${t} en ${d.list || 'una lista'}`;
+      case 'card_moved': return `movió ${t} de ${d.from} a ${d.to}`;
+      case 'card_renamed': return `renombró «${d.from}» como «${d.to}»`;
+      case 'due_changed': return `cambió la fecha de ${t}: ${shortDate(d.from)} → ${shortDate(d.to)}`;
+      case 'card_done': return `completó ${t}`;
+      case 'card_undone': return `reabrió ${t}`;
+      case 'card_archived': return `archivó ${t}`;
+      case 'card_restored': return `restauró ${t}`;
+      case 'card_deleted': return `eliminó ${t}`;
+      case 'assigned': {
+        const parts = [];
+        if (d.added && d.added.length) parts.push(`asignó a ${d.added.join(', ')}`);
+        if (d.removed && d.removed.length) parts.push(`quitó a ${d.removed.join(', ')}`);
+        return `${parts.join(' y ')} en ${t}`;
+      }
+      case 'list_created': return `creó la lista «${d.title}»`;
+      case 'list_archived': return `archivó la lista «${d.title}»`;
+      case 'list_restored': return `restauró la lista «${d.title}»`;
+      case 'commented': return `comentó en ${t}: “${d.excerpt || ''}”`;
+      default: return a.kind;
+    }
+  }
+  const activityLine = (a, onclick) => el('div', { class: 'act' + (onclick ? ' link' : ''), onclick },
+    el('b', {}, nameOf(a.profiles, 'Alguien')), ' ', describe(a), el('div', { class: 'when' }, fmtDateTime(a.created_at)));
+
+  const actDlg = $('#activityDialog'), actModal = $('#activityModal');
+  actDlg.addEventListener('click', e => { if (e.target === actDlg) actDlg.close(); });
+  $('#activityBtn').addEventListener('click', async () => {
+    const close = el('div', { class: 'modal-foot' }, el('span'), el('button', { class: 'btn primary', onclick: () => actDlg.close() }, 'Cerrar'));
+    actModal.replaceChildren(el('h3', {}, 'Actividad del tablero'), el('p', { class: 'muted', style: 'margin:0' }, 'Cargando…'), close);
+    actDlg.showModal();
+    const { data, error } = await sb.from('activity').select('id,card_id,kind,detail,created_at,user_id,profiles(email,display_name)')
+      .eq('board_id', S.boardId).order('created_at', { ascending: false }).limit(100);
+    actModal.replaceChildren(...[el('h3', {}, 'Actividad del tablero'),
+      error ? el('p', { class: 'muted', style: 'margin:0' }, errMsg(error))
+        : data.length ? data.map(a => activityLine(a, a.card_id && S.cards.some(c => c.id === a.card_id) ? () => { actDlg.close(); openCard(a.card_id); } : null))
+        : el('p', { class: 'muted', style: 'margin:0' }, 'Todavía no hay actividad.'),
+      close].flat(Infinity));
+  });
 
   // ---------- Archivados ----------
   const arcDlg = $('#archiveDialog'), arcModal = $('#archiveModal');
