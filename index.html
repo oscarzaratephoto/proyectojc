@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
-<title>Tablero</title>
+<meta name="robots" content="noindex, nofollow">
+<title>Proyecto JC</title>
 <style>
   :root {
-    --bg: #1d2125; --surface: #101204; --list: #161a1d; --card: #22272b; --card-hover: #2c333a;
+    --bg: #1d2125; --list: #161a1d; --card: #22272b; --card-hover: #2c333a;
     --text: #dee4ea; --muted: #8c9bab; --line: #38414a; --accent: #579dff; --danger: #f87168;
     --topbar: #0f1214;
   }
@@ -16,6 +16,7 @@
     --muted: #626f86; --line: #dcdfe4; --accent: #0c66e4; --danger: #c9372c; --topbar: #fff;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { height: 100%; margin: 0; }
   body {
     font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -23,25 +24,62 @@
   }
   button, input, textarea, select { font: inherit; color: inherit; }
   button { cursor: pointer; }
+  a { color: var(--accent); }
+  .muted { color: var(--muted); }
+
   .topbar {
-    display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--topbar);
+    display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--topbar);
     border-bottom: 1px solid var(--line); flex-wrap: wrap;
   }
-  .brand { font-weight: 700; font-size: 16px; margin-right: 6px; }
-  .topbar select, .topbar input[type=search] {
+  .brand { font-weight: 700; font-size: 16px; margin-right: 6px; color: var(--text); text-decoration: none; }
+  .topbar input[type=search], .topbar .board-name {
     background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
   }
-  .btn {
-    background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px;
-  }
+  .board-name { font-weight: 600; min-width: 0; width: 200px; }
+  .btn { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
   .btn:hover { background: var(--card-hover); }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .btn.danger { color: var(--danger); }
+  .btn:disabled { opacity: .6; cursor: default; }
   .spacer { flex: 1; }
-  .board {
-    flex: 1; display: flex; align-items: flex-start; gap: 12px; padding: 14px; overflow-x: auto; overflow-y: hidden;
+  .row { display: flex; gap: 6px; align-items: center; }
+
+  main { flex: 1; min-height: 0; overflow: auto; }
+  main.board {
+    display: flex; align-items: flex-start; gap: 12px; padding: 14px; overflow-x: auto; overflow-y: hidden;
     background: var(--board-bg, #0c66e4);
   }
+
+  /* Auth */
+  .center { min-height: 100%; display: grid; place-items: center; padding: 20px; }
+  .auth {
+    width: min(380px, 100%); background: var(--list); border: 1px solid var(--line); border-radius: 14px;
+    padding: 24px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .auth h1 { margin: 0 0 4px; font-size: 20px; }
+  .auth label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .auth input {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 15px;
+  }
+  .auth input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .msg { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: var(--card); }
+  .msg.err { color: var(--danger); }
+  .linkbtn { background: none; border: 0; color: var(--accent); padding: 0; text-align: left; }
+
+  /* Home */
+  .home { padding: 24px; max-width: 980px; margin: 0 auto; }
+  .home h2 { margin: 0 0 14px; font-size: 16px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .tile {
+    height: 96px; border-radius: 10px; padding: 12px; color: #fff; font-weight: 700; border: 0;
+    text-align: left; display: flex; flex-direction: column; justify-content: space-between;
+    background: var(--c, #0c66e4);
+  }
+  .tile small { font-weight: 400; opacity: .85; }
+  .tile:hover { filter: brightness(1.12); }
+  .tile.new { background: var(--card); color: var(--muted); border: 1px dashed var(--line); font-weight: 500; justify-content: center; align-items: center; text-align: center; }
+
+  /* Listas y tarjetas */
   .list {
     flex: 0 0 272px; max-height: 100%; display: flex; flex-direction: column; background: var(--list);
     border-radius: 10px; padding: 8px;
@@ -67,120 +105,98 @@
   .card.hidden { display: none; }
   .labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
   .label { height: 8px; width: 40px; border-radius: 4px; }
-  .badges { display: flex; gap: 10px; margin-top: 6px; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
+  .badges { display: flex; gap: 10px; margin-top: 6px; color: var(--muted); font-size: 12px; flex-wrap: wrap; align-items: center; }
   .badge.overdue { color: #fff; background: var(--danger); border-radius: 4px; padding: 0 5px; }
   .badge.done { color: #4bce97; }
+  .avatars { display: flex; margin-left: auto; }
+  .avatar {
+    width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff;
+    font-size: 11px; font-weight: 700; margin-left: -4px; border: 2px solid var(--card); background: var(--c, #579dff);
+  }
   .add-card, .add-list-btn {
     margin-top: 6px; text-align: left; background: transparent; border: 0; color: var(--muted);
     padding: 7px 8px; border-radius: 8px;
   }
   .add-card:hover, .add-list-btn:hover { background: var(--card-hover); color: var(--text); }
-  .add-list-btn { flex: 0 0 272px; background: rgba(255,255,255,.22); color: #fff; margin: 0; }
+  .add-list-btn { flex: 0 0 272px; background: rgba(255,255,255,.22); color: #fff; margin: 0; width: 272px; }
   .add-list-btn:hover { background: rgba(255,255,255,.32); color: #fff; }
   .composer { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
   .composer textarea, .composer input {
     width: 100%; background: var(--card); border: 1px solid var(--accent); border-radius: 8px; padding: 8px; resize: none;
   }
-  .row { display: flex; gap: 6px; align-items: center; }
-  .empty { margin: auto; text-align: center; color: #fff; }
 
-  /* Modal */
+  /* Diálogos */
   dialog {
     border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--text);
     padding: 0; width: min(640px, 94vw); max-height: 92vh;
   }
   dialog::backdrop { background: rgba(0,0,0,.6); }
   .modal { padding: 18px; display: flex; flex-direction: column; gap: 14px; max-height: 92vh; overflow-y: auto; }
-  .modal h3 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .modal h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
   .modal .title-input { font-size: 18px; font-weight: 600; width: 100%; background: transparent; border: 2px solid transparent; border-radius: 6px; padding: 4px 6px; }
-  .modal .title-input:focus, .modal textarea:focus, .modal input[type=date]:focus { border-color: var(--accent); outline: none; }
-  .modal textarea { width: 100%; min-height: 90px; background: var(--card); border: 2px solid var(--line); border-radius: 8px; padding: 8px; resize: vertical; }
-  .modal input[type=date] { background: var(--card); border: 2px solid var(--line); border-radius: 6px; padding: 5px 8px; color-scheme: dark light; }
+  .modal .title-input:focus, .modal textarea:focus, .modal input:focus { border-color: var(--accent); outline: none; }
+  .modal textarea { width: 100%; min-height: 80px; background: var(--card); border: 2px solid var(--line); border-radius: 8px; padding: 8px; resize: vertical; }
+  .modal input[type=date], .modal input[type=email] { background: var(--card); border: 2px solid var(--line); border-radius: 6px; padding: 6px 8px; color-scheme: dark light; }
   .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
   .swatch { width: 40px; height: 28px; border-radius: 6px; border: 2px solid transparent; position: relative; }
   .swatch.on { border-color: var(--text); }
   .swatch.on::after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-weight: 700; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--card); border: 2px solid var(--line); border-radius: 999px; padding: 3px 10px 3px 4px; }
+  .chip.on { border-color: var(--accent); }
+  .chip .avatar { border: 0; margin: 0; }
   .check { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
   .check input[type=text] { flex: 1; background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 4px 6px; }
   .check input[type=text]:focus { border-color: var(--accent); outline: none; }
   .check.done input[type=text] { text-decoration: line-through; color: var(--muted); }
   progress { width: 100%; height: 8px; accent-color: #4bce97; }
   .modal-foot { display: flex; justify-content: space-between; gap: 8px; }
-  .toast {
-    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #000c; color: #fff;
-    padding: 8px 14px; border-radius: 8px; z-index: 10;
+  .comment { display: flex; gap: 8px; padding: 6px 0; }
+  .comment .body { flex: 1; min-width: 0; }
+  .comment .who { font-weight: 600; }
+  .comment .text { white-space: pre-wrap; word-break: break-word; background: var(--card); border-radius: 8px; padding: 6px 8px; margin-top: 2px; }
+  .member { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .member .avatar { border: 0; margin: 0; }
+  .member .info { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  #toasts {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 10;
+    display: flex; flex-direction: column; gap: 6px; align-items: center; max-width: 90vw; pointer-events: none;
   }
+  .toast { background: #000c; color: #fff; padding: 8px 14px; border-radius: 8px; text-align: center; }
 </style>
 </head>
 <body>
 
-<header class="topbar">
-  <span class="brand">▦ Tablero</span>
-  <select id="boardSelect" aria-label="Tablero"></select>
-  <button class="btn" id="newBoard">+ Tablero</button>
-  <button class="btn" id="renameBoard">Renombrar</button>
-  <button class="btn danger" id="deleteBoard">Eliminar</button>
+<header class="topbar" id="topbar" hidden>
+  <a class="brand" id="brand" href="./">▦ Proyecto JC</a>
+  <span class="row" id="boardTools" hidden>
+    <input class="board-name" id="boardName" aria-label="Nombre del tablero" maxlength="120">
+    <button class="btn" id="membersBtn">👥 Miembros</button>
+    <button class="btn" id="exportBtn" title="Descargar copia del tablero">Exportar</button>
+    <input type="search" id="search" placeholder="Buscar…" aria-label="Buscar tarjetas">
+  </span>
   <span class="spacer"></span>
-  <input type="search" id="search" placeholder="Buscar tarjetas…" aria-label="Buscar tarjetas">
-  <button class="btn" id="exportBtn">Exportar</button>
-  <button class="btn" id="importBtn">Importar</button>
-  <input type="file" id="importFile" accept="application/json" hidden>
+  <span class="muted" id="who"></span>
   <button class="btn" id="themeBtn" title="Cambiar tema">◐</button>
+  <button class="btn" id="logoutBtn">Salir</button>
 </header>
 
-<main class="board" id="board"></main>
+<main id="app"></main>
 
 <dialog id="cardDialog"><div class="modal" id="cardModal"></div></dialog>
+<dialog id="membersDialog"><div class="modal" id="membersModal"></div></dialog>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
 <script>
 (() => {
   'use strict';
 
-  const STORE = 'tablero-v1';
   const COLORS = ['#4bce97', '#f5cd47', '#fea362', '#f87168', '#9f8fef', '#579dff', '#6cc3e0', '#94c748'];
   const BOARD_BGS = ['#0c66e4', '#1f845a', '#c25100', '#ae2e24', '#6e5dc6', '#206a83'];
-  const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  const STEP = 1024;
 
-  // ---------- Estado ----------
-  const seed = () => ({
-    current: null,
-    boards: [{
-      id: uid(), name: 'Mi primer tablero', bg: BOARD_BGS[0],
-      lists: [
-        { id: uid(), title: 'Por hacer', cards: [
-          { id: uid(), title: 'Haz clic en una tarjeta para editarla', desc: 'Aquí puedes añadir descripción, etiquetas, fecha límite y checklist.', labels: [COLORS[5]], due: '', checklist: [] },
-          { id: uid(), title: 'Arrastra tarjetas entre listas', desc: '', labels: [], due: '', checklist: [] },
-        ]},
-        { id: uid(), title: 'En progreso', cards: [
-          { id: uid(), title: 'También puedes arrastrar listas por su cabecera', desc: '', labels: [COLORS[1]], due: '', checklist: [{ id: uid(), text: 'Probarlo', done: true }, { id: uid(), text: 'Disfrutarlo', done: false }] },
-        ]},
-        { id: uid(), title: 'Hecho', cards: [] },
-      ],
-    }],
-  });
-
-  let state = load();
-  function load() {
-    try {
-      const s = JSON.parse(localStorage.getItem(STORE));
-      if (s && Array.isArray(s.boards) && s.boards.length) return s;
-    } catch (e) {}
-    return seed();
-  }
-  function save() {
-    try { localStorage.setItem(STORE, JSON.stringify(state)); }
-    catch (e) { toast('No se pudo guardar en el navegador'); }
-  }
-  const board = () => state.boards.find(b => b.id === state.current) || state.boards[0];
-  function findCard(id) {
-    for (const l of board().lists) {
-      const i = l.cards.findIndex(c => c.id === id);
-      if (i > -1) return { list: l, index: i, card: l.cards[i] };
-    }
-    return null;
-  }
-
-  // ---------- Utilidades DOM ----------
+  // ---------- Utilidades ----------
   const $ = (s, r = document) => r.querySelector(s);
   function el(tag, props = {}, ...kids) {
     const n = document.createElement(tag);
@@ -195,134 +211,426 @@
     return n;
   }
   function toast(msg) {
+    let box = $('#toasts');
+    if (!box) { box = el('div', { id: 'toasts' }); document.body.append(box); }
     const t = el('div', { class: 'toast' }, msg);
-    document.body.append(t);
-    setTimeout(() => t.remove(), 2200);
+    box.append(t);
+    setTimeout(() => t.remove(), 3200);
   }
-  const todayStr = () => new Date().toISOString().slice(0, 10);
+  const uuid = () => (crypto.randomUUID ? crypto.randomUUID()
+    : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c =>
+        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)));
+  const todayStr = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
   const fmtDate = d => new Date(d + 'T00:00:00').toLocaleDateString('es', { day: 'numeric', month: 'short' });
+  const fmtDateTime = d => new Date(d).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const byPos = (a, b) => a.pos - b.pos;
+  const errMsg = e => {
+    const m = (e && e.message) || String(e);
+    if (/Invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos';
+    if (/USER_NOT_FOUND/.test(m)) return 'Ese correo no tiene cuenta todavía. Pide al administrador que lo invite primero.';
+    if (/row-level security|permission denied|42501/i.test(m)) return 'No tienes permiso para hacer eso';
+    if (/Email not confirmed/i.test(m)) return 'Debes confirmar tu correo con la invitación';
+    if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'Sin conexión con el servidor';
+    if (/at least 6 characters|should be at least/i.test(m)) return 'La contraseña es demasiado corta';
+    return m;
+  };
+  const nameOf = (profile, fallback = '?') => (profile && (profile.display_name || profile.email)) || fallback;
+  const initials = s => (s || '?').trim().slice(0, 2).toUpperCase();
+  const colorFor = id => { let h = 0; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return COLORS[h % COLORS.length]; };
+  const avatar = (id, name) => el('span', { class: 'avatar', style: `--c:${colorFor(id)}`, title: name }, initials(name));
+  function posBetween(sibs, idx) {
+    const prev = sibs[idx - 1], next = sibs[idx];
+    if (prev && next) return (prev.pos + next.pos) / 2;
+    if (prev) return prev.pos + STEP;
+    if (next) return next.pos - STEP;
+    return STEP;
+  }
 
-  // ---------- Render ----------
-  const boardEl = $('#board');
-  let drag = null; // { type: 'card'|'list', id }
+  // ---------- Supabase ----------
+  const cfg = window.APP_CONFIG || {};
+  const app = $('#app');
+  if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY || !window.supabase) {
+    app.append(el('div', { class: 'center' }, el('div', { class: 'auth' },
+      el('h1', {}, 'Falta configurar'),
+      el('p', { class: 'muted' }, 'Rellena SUPABASE_URL y SUPABASE_ANON_KEY en config.js (ver README).'))));
+    return;
+  }
+  const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  });
 
-  function render() {
-    const b = board();
-    state.current = b.id;
-    document.documentElement.style.setProperty('--board-bg', b.bg);
+  // ---------- Estado ----------
+  const S = {
+    user: null, view: null,
+    boards: [],
+    boardId: null, board: null, lists: [], cards: [], members: [],
+    channel: null, dirty: false, openCardId: null,
+  };
+  let needPassword = false;
+  let started = false;
+  let drag = null;
 
-    const sel = $('#boardSelect');
-    sel.replaceChildren(...state.boards.map(x => el('option', { value: x.id, selected: x.id === b.id }, x.name)));
+  const isOwner = () => S.members.some(m => m.user_id === S.user.id && m.role === 'owner');
+  const profileOf = uid => (S.members.find(m => m.user_id === uid) || {}).profiles;
 
-    boardEl.replaceChildren(...b.lists.map(renderList), renderAddList());
+  // ---------- Navegación ----------
+  function go(boardId, replace) {
+    const url = location.pathname + (boardId ? '?b=' + encodeURIComponent(boardId) : '');
+    history[replace ? 'replaceState' : 'pushState'](null, '', url);
+    navigate();
+  }
+  async function navigate() {
+    await flushAll();
+    const id = new URLSearchParams(location.search).get('b');
+    if (id) openBoard(id); else showHome();
+  }
+  window.addEventListener('popstate', () => { if (S.user && !needPassword) navigate(); });
+  $('#brand').addEventListener('click', e => { e.preventDefault(); go(null); });
+
+  function setChrome(view) {
+    S.view = view;
+    $('#topbar').hidden = view === 'auth';
+    $('#boardTools').hidden = view !== 'board';
+    $('#who').textContent = S.user ? S.user.email : '';
+    app.className = view === 'board' ? 'board' : '';
+    if (view !== 'board') app.scrollLeft = 0;
+  }
+
+  // ---------- Autenticación ----------
+  function authCard(title, ...kids) {
+    app.className = '';
+    app.replaceChildren(el('div', { class: 'center' }, el('div', { class: 'auth' }, el('h1', {}, title), ...kids)));
+  }
+
+  function renderLogin(notice) {
+    teardownBoard(); S.user = null; setChrome('auth');
+    const email = el('input', { type: 'email', required: true, autocomplete: 'username', placeholder: 'tucorreo@ejemplo.com' });
+    const pass = el('input', { type: 'password', required: true, autocomplete: 'current-password', placeholder: '••••••••' });
+    const msg = el('div', { class: 'msg', hidden: !notice }, notice || '');
+    const btn = el('button', { class: 'btn primary', type: 'submit' }, 'Entrar');
+    const form = el('form', { class: 'auth-form', style: 'display:flex;flex-direction:column;gap:12px',
+      onsubmit: async e => {
+        e.preventDefault(); btn.disabled = true; msg.hidden = true;
+        const { error } = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pass.value });
+        btn.disabled = false;
+        if (error) { msg.textContent = errMsg(error); msg.className = 'msg err'; msg.hidden = false; }
+      } },
+      el('label', {}, 'Correo', email), el('label', {}, 'Contraseña', pass), msg, btn);
+    const forgot = el('button', { class: 'linkbtn', type: 'button', onclick: async () => {
+      const addr = email.value.trim();
+      if (!addr) { msg.textContent = 'Escribe tu correo arriba y vuelve a pulsar.'; msg.className = 'msg err'; msg.hidden = false; return; }
+      const { error } = await sb.auth.resetPasswordForEmail(addr, { redirectTo: location.origin + location.pathname });
+      msg.className = error ? 'msg err' : 'msg';
+      msg.textContent = error ? errMsg(error) : 'Si ese correo tiene cuenta, recibirás un enlace para elegir una contraseña nueva.';
+      msg.hidden = false;
+    } }, '¿Olvidaste tu contraseña?');
+    authCard('Proyecto JC', form, forgot, el('p', { class: 'muted', style: 'margin:0;font-size:12px' }, 'Acceso solo por invitación.'));
+    email.focus();
+  }
+
+  function renderSetPassword() {
+    teardownBoard(); setChrome('auth');
+    const p1 = el('input', { type: 'password', required: true, minLength: 8, autocomplete: 'new-password' });
+    const p2 = el('input', { type: 'password', required: true, minLength: 8, autocomplete: 'new-password' });
+    const msg = el('div', { class: 'msg err', hidden: true });
+    const btn = el('button', { class: 'btn primary', type: 'submit' }, 'Guardar contraseña');
+    authCard('Elige tu contraseña', el('form', { style: 'display:flex;flex-direction:column;gap:12px',
+      onsubmit: async e => {
+        e.preventDefault(); msg.hidden = true;
+        if (p1.value.length < 8) { msg.textContent = 'Mínimo 8 caracteres'; msg.hidden = false; return; }
+        if (p1.value !== p2.value) { msg.textContent = 'Las contraseñas no coinciden'; msg.hidden = false; return; }
+        btn.disabled = true;
+        const { error } = await sb.auth.updateUser({ password: p1.value });
+        btn.disabled = false;
+        if (error) { msg.textContent = errMsg(error); msg.hidden = false; return; }
+        needPassword = false;
+        history.replaceState(null, '', location.pathname + location.search);
+        toast('Contraseña guardada');
+        navigate();
+      } },
+      el('label', {}, 'Contraseña nueva (mínimo 8)', p1), el('label', {}, 'Repítela', p2), msg, btn));
+    p1.focus();
+  }
+
+  $('#logoutBtn').addEventListener('click', async () => { await flushAll(); await sb.auth.signOut(); });
+
+  // El hash con el tipo de enlace (invitación o recuperación) hay que leerlo antes de que supabase-js lo limpie.
+  const hashType = new URLSearchParams(location.hash.slice(1)).get('type');
+  if (hashType === 'invite' || hashType === 'recovery') needPassword = true;
+
+  sb.auth.onAuthStateChange((ev, session) => {
+    // Sin await dentro del callback: evita bloqueos de supabase-js.
+    setTimeout(() => {
+      if (ev === 'SIGNED_OUT') { started = false; renderLogin(); return; }
+      if (ev === 'PASSWORD_RECOVERY') { needPassword = true; }
+      if (!session) { if (ev === 'INITIAL_SESSION') renderLogin(); return; }
+      const same = S.user && S.user.id === session.user.id;
+      S.user = session.user;
+      if (started && same && ev !== 'PASSWORD_RECOVERY') return;
+      started = true;
+      if (needPassword) renderSetPassword(); else navigate();
+    }, 0);
+  });
+
+  // ---------- Inicio: lista de tableros ----------
+  async function showHome() {
+    teardownBoard(); setChrome('home');
+    const { data, error } = await sb.from('boards').select('id,name,bg,owner_id,created_at').order('created_at');
+    if (S.view !== 'home') return;
+    if (error) { toast(errMsg(error)); return; }
+    S.boards = data;
+    const mine = S.boards.filter(b => b.owner_id === S.user.id);
+    const shared = S.boards.filter(b => b.owner_id !== S.user.id);
+    const tile = b => el('button', { class: 'tile', style: `--c:${b.bg}`, onclick: () => go(b.id) },
+      el('span', {}, b.name), el('small', {}, b.owner_id === S.user.id ? 'Tuyo' : 'Compartido contigo'));
+    const create = el('button', { class: 'tile new', onclick: async () => {
+      const name = (prompt('Nombre del nuevo tablero:') || '').trim();
+      if (!name) return;
+      const bg = BOARD_BGS[S.boards.length % BOARD_BGS.length];
+      const { data: b, error: e } = await sb.from('boards').insert({ name, bg, owner_id: S.user.id }).select().single();
+      if (e) return toast(errMsg(e));
+      const l = [['Por hacer', 1], ['En progreso', 2], ['Hecho', 3]].map(([title, n]) => ({ board_id: b.id, title, pos: n * STEP }));
+      await sb.from('lists').insert(l);
+      go(b.id);
+    } }, '+ Crear tablero');
+    app.replaceChildren(el('div', { class: 'home' },
+      el('h2', {}, 'Tus tableros'), el('div', { class: 'tiles' }, mine.map(tile), create),
+      shared.length ? [el('h2', { style: 'margin-top:28px' }, 'Compartidos contigo'), el('div', { class: 'tiles' }, shared.map(tile))] : null));
+  }
+
+  // ---------- Tablero: carga y tiempo real ----------
+  async function fetchBoard(id) {
+    const [b, l, c, m] = await Promise.all([
+      sb.from('boards').select('*').eq('id', id).maybeSingle(),
+      sb.from('lists').select('*').eq('board_id', id).order('pos'),
+      sb.from('cards').select('*').eq('board_id', id).order('pos'),
+      sb.from('board_members').select('user_id, role, profiles(email, display_name)').eq('board_id', id),
+    ]);
+    const error = b.error || l.error || c.error || m.error;
+    if (error) throw error;
+    return { board: b.data, lists: l.data, cards: c.data, members: m.data };
+  }
+
+  async function openBoard(id) {
+    teardownBoard(); setChrome('board');
+    app.replaceChildren(el('div', { class: 'center', style: 'width:100%;color:#fff' }, 'Cargando…'));
+    let d;
+    try { d = await fetchBoard(id); } catch (e) { toast(errMsg(e)); return go(null, true); }
+    if (S.view !== 'board') return;
+    if (!d.board) { toast('No tienes acceso a ese tablero'); return go(null, true); }
+    S.boardId = id; S.board = d.board; S.lists = d.lists; S.cards = d.cards; S.members = d.members;
+    $('#boardName').value = S.board.name;
+    $('#search').value = '';
+    document.title = S.board.name + ' · Proyecto JC';
+    renderBoard();
+    subscribe(id);
+  }
+
+  async function resync() {
+    if (!S.boardId) return;
+    try {
+      const d = await fetchBoard(S.boardId);
+      if (!d.board || !d.members.some(m => m.user_id === S.user.id)) { toast('Ya no tienes acceso a este tablero'); return go(null, true); }
+      Object.assign(S, { board: d.board, lists: d.lists, cards: d.cards, members: d.members });
+      renderSoon();
+    } catch (e) { toast(errMsg(e)); }
+  }
+
+  function teardownBoard() {
+    if (S.channel) { sb.removeChannel(S.channel); S.channel = null; }
+    S.boardId = null; S.board = null; S.lists = []; S.cards = []; S.members = [];
+    S.openCardId = null; S.dirty = false;
+    document.title = 'Proyecto JC';
+    if ($('#cardDialog').open) $('#cardDialog').close();
+    if ($('#membersDialog').open) $('#membersDialog').close();
+  }
+
+  function subscribe(id) {
+    const ch = sb.channel('board-' + id);
+    const tables = { lists: 'board_id', cards: 'board_id', comments: 'board_id', board_members: 'board_id', boards: 'id' };
+    for (const [table, col] of Object.entries(tables)) {
+      ch.on('postgres_changes', { event: '*', schema: 'public', table, filter: `${col}=eq.${id}` }, p => onChange(table, p));
+      // Realtime no filtra los DELETE, así que se escuchan sin filtro y se comprueba el id a mano.
+      ch.on('postgres_changes', { event: 'DELETE', schema: 'public', table }, p => onChange(table, p));
+    }
+    ch.subscribe();
+    S.channel = ch;
+  }
+
+  function upsert(arr, rec) {
+    const i = arr.findIndex(x => x.id === rec.id);
+    if (i > -1) arr[i] = Object.assign(arr[i], rec); else arr.push(rec);
+    arr.sort(byPos);
+  }
+
+  function onChange(table, p) {
+    const rec = p.new, old = p.old || {};
+    if (table === 'lists' || table === 'cards') {
+      const key = table === 'lists' ? 'lists' : 'cards';
+      if (p.eventType === 'DELETE') {
+        S[key] = S[key].filter(x => x.id !== old.id);
+        if (key === 'lists') S.cards = S.cards.filter(c => c.list_id !== old.id);
+      } else if (rec.board_id === S.boardId) {
+        upsert(S[key], rec);
+      }
+      renderSoon();
+    } else if (table === 'boards') {
+      if (p.eventType === 'DELETE') {
+        if (old.id === S.boardId) { toast('Este tablero fue eliminado'); go(null, true); }
+      } else if (rec.id === S.boardId) {
+        Object.assign(S.board, rec); $('#boardName').value = S.board.name; renderSoon();
+      }
+    } else if (table === 'board_members') {
+      if (old.board_id && old.board_id !== S.boardId) return;
+      resync();
+    } else if (table === 'comments') {
+      if (S.openCardId && $('#cardDialog').open) loadComments(S.openCardId);
+    }
+  }
+
+  // Redibuja salvo que alguien esté escribiendo; en ese caso espera a que termine.
+  const typing = () => { const a = document.activeElement; return a && /^(INPUT|TEXTAREA)$/.test(a.tagName) && app.contains(a); };
+  function renderSoon() {
+    if (S.view !== 'board') return;
+    if (typing() || drag || $('#cardDialog').open || $('#membersDialog').open) { S.dirty = true; return; }
+    renderBoard();
+  }
+  function flushDirty() { if (S.dirty) renderSoon(); }
+  document.addEventListener('focusout', () => setTimeout(flushDirty, 60));
+  $('#cardDialog').addEventListener('close', async () => { S.openCardId = null; await flushAll(); S.dirty = false; if (S.view === 'board') renderBoard(); });
+  $('#membersDialog').addEventListener('close', flushDirty);
+  setInterval(() => { if (S.view === 'board' && !document.hidden && !typing() && !drag && !$('#cardDialog').open) resync(); }, 60000);
+
+  // ---------- Guardado ----------
+  const pending = new Map(); // card.id → { patch, timer }
+  function patchCard(card, patch, now) {
+    Object.assign(card, patch);
+    const p = pending.get(card.id) || { patch: {} };
+    clearTimeout(p.timer);
+    Object.assign(p.patch, patch);
+    pending.set(card.id, p);
+    if (now) return flushCard(card.id);
+    p.timer = setTimeout(() => flushCard(card.id), 600);
+  }
+  async function flushCard(id) {
+    const p = pending.get(id); if (!p) return;
+    pending.delete(id); clearTimeout(p.timer);
+    const { error } = await sb.from('cards').update(p.patch).eq('id', id);
+    if (error) { toast(errMsg(error)); resync(); }
+  }
+  const flushAll = () => Promise.all([...pending.keys()].map(flushCard));
+  window.addEventListener('pagehide', () => { for (const id of [...pending.keys()]) flushCard(id); });
+
+  async function run(promise) {
+    const { error } = await promise;
+    if (error) { toast(errMsg(error)); resync(); return false; }
+    return true;
+  }
+
+  // ---------- Render del tablero ----------
+  function renderBoard() {
+    S.dirty = false;
+    document.documentElement.style.setProperty('--board-bg', S.board.bg);
+    const keepX = app.scrollLeft;
+    const keepY = new Map([...app.querySelectorAll('.list')].map(l => [l.dataset.id, l.querySelector('.cards')?.scrollTop || 0]));
+    app.replaceChildren(...S.lists.map(renderList), renderAddList());
+    app.scrollLeft = keepX;
+    app.querySelectorAll('.list').forEach(l => { const c = l.querySelector('.cards'); if (c) c.scrollTop = keepY.get(l.dataset.id) || 0; });
     applySearch();
-    save();
   }
 
   function renderList(list) {
-    const cardsEl = el('div', { class: 'cards' }, list.cards.map(renderCard));
+    const cards = S.cards.filter(c => c.list_id === list.id);
+    const cardsEl = el('div', { class: 'cards' }, cards.map(renderCard));
     const root = el('section', { class: 'list', 'data-id': list.id });
 
     const title = el('input', {
-      class: 'list-title', value: list.title, 'aria-label': 'Título de la lista',
-      onchange: e => { list.title = e.target.value.trim() || 'Sin título'; save(); },
+      class: 'list-title', value: list.title, 'aria-label': 'Título de la lista', maxLength: 200,
+      onchange: e => { list.title = e.target.value.trim() || 'Sin título'; e.target.value = list.title; run(sb.from('lists').update({ title: list.title }).eq('id', list.id)); },
       onkeydown: e => { if (e.key === 'Enter') e.target.blur(); },
     });
     const head = el('div', { class: 'list-head', draggable: true },
-      title,
-      el('span', { class: 'count' }, String(list.cards.length)),
-      el('button', {
-        class: 'icon-btn', title: 'Eliminar lista', onclick: () => {
-          if (confirm(`¿Eliminar la lista "${list.title}" y sus ${list.cards.length} tarjetas?`)) {
-            board().lists = board().lists.filter(l => l !== list); render();
-          }
-        },
-      }, '🗑'),
-    );
+      title, el('span', { class: 'count' }, String(cards.length)),
+      el('button', { class: 'icon-btn', title: 'Eliminar lista', onclick: () => {
+        if (!confirm(`¿Eliminar la lista "${list.title}" y sus ${cards.length} tarjetas?`)) return;
+        S.lists = S.lists.filter(l => l !== list); S.cards = S.cards.filter(c => c.list_id !== list.id);
+        renderBoard(); run(sb.from('lists').delete().eq('id', list.id));
+      } }, '🗑'));
 
-    // Arrastrar listas
     head.addEventListener('dragstart', e => {
       if (e.target !== head) return;
       drag = { type: 'list', id: list.id };
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', list.id);
+      e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', list.id);
       setTimeout(() => root.classList.add('dragging'));
     });
-    head.addEventListener('dragend', () => { drag = null; render(); });
+    head.addEventListener('dragend', () => { drag = null; renderBoard(); });
 
     root.addEventListener('dragover', e => {
       if (!drag) return;
       e.preventDefault();
-      if (drag.type === 'list') {
-        root.classList.toggle('over-list', drag.id !== list.id);
-      } else {
-        clearDropMarks();
-        const before = cardAfter(cardsEl, e.clientY);
-        if (before) before.classList.add('drop-before');
-      }
+      if (drag.type === 'list') root.classList.toggle('over-list', drag.id !== list.id);
+      else { clearDropMarks(); const b = cardAfter(cardsEl, e.clientY); if (b) b.classList.add('drop-before'); }
     });
-    root.addEventListener('dragleave', e => {
-      if (!root.contains(e.relatedTarget)) root.classList.remove('over-list');
-    });
+    root.addEventListener('dragleave', e => { if (!root.contains(e.relatedTarget)) root.classList.remove('over-list'); });
     root.addEventListener('drop', e => {
       if (!drag) return;
       e.preventDefault();
-      const lists = board().lists;
-      if (drag.type === 'list') {
-        const from = lists.findIndex(l => l.id === drag.id);
-        const to = lists.findIndex(l => l.id === list.id);
-        if (from > -1 && to > -1 && from !== to) lists.splice(to, 0, lists.splice(from, 1)[0]);
-      } else {
-        const found = findCard(drag.id);
-        if (found) {
-          const before = cardAfter(cardsEl, e.clientY);
-          found.list.cards.splice(found.index, 1);
-          let idx = before ? list.cards.findIndex(c => c.id === before.dataset.id) : list.cards.length;
-          if (idx < 0) idx = list.cards.length;
-          list.cards.splice(idx, 0, found.card);
-        }
-      }
-      drag = null; render();
+      if (drag.type === 'list') dropList(drag.id, list.id);
+      else { const b = cardAfter(cardsEl, e.clientY); dropCard(drag.id, list.id, b && b.dataset.id); }
+      drag = null; renderBoard();
     });
 
     root.append(head, cardsEl, renderComposer(list));
     return root;
   }
 
-  // Devuelve la tarjeta visible justo debajo del puntero (la nueva posición será antes de ella)
   function cardAfter(container, y) {
     const items = [...container.querySelectorAll('.card:not(.dragging):not(.hidden)')];
     return items.find(c => { const r = c.getBoundingClientRect(); return y < r.top + r.height / 2; }) || null;
   }
-  function clearDropMarks() { document.querySelectorAll('.drop-before').forEach(n => n.classList.remove('drop-before')); }
+  const clearDropMarks = () => document.querySelectorAll('.drop-before').forEach(n => n.classList.remove('drop-before'));
+
+  function dropCard(cardId, listId, beforeId) {
+    const card = S.cards.find(c => c.id === cardId); if (!card) return;
+    const sibs = S.cards.filter(c => c.list_id === listId && c.id !== cardId).sort(byPos);
+    let idx = beforeId ? sibs.findIndex(c => c.id === beforeId) : sibs.length;
+    if (idx < 0) idx = sibs.length;
+    patchCard(card, { list_id: listId, pos: posBetween(sibs, idx) }, true);
+    S.cards.sort(byPos);
+  }
+  function dropList(listId, ontoId) {
+    const list = S.lists.find(l => l.id === listId); if (!list || listId === ontoId) return;
+    const to = S.lists.findIndex(l => l.id === ontoId);
+    const sibs = S.lists.filter(l => l.id !== listId);
+    list.pos = posBetween(sibs, Math.min(to, sibs.length));
+    S.lists.sort(byPos);
+    run(sb.from('lists').update({ pos: list.pos }).eq('id', list.id));
+  }
 
   function renderCard(card) {
     const n = el('article', { class: 'card', draggable: true, 'data-id': card.id, tabindex: 0 });
     if (card.labels.length) n.append(el('div', { class: 'labels' }, card.labels.map(c => el('span', { class: 'label', style: `background:${c}` }))));
     n.append(el('div', {}, card.title));
-
     const badges = [];
-    if (card.due) {
-      const overdue = card.due < todayStr();
-      badges.push(el('span', { class: 'badge' + (overdue ? ' overdue' : '') }, '🕒 ' + fmtDate(card.due)));
-    }
-    if (card.desc) badges.push(el('span', { class: 'badge', title: 'Tiene descripción' }, '☰'));
+    if (card.due) badges.push(el('span', { class: 'badge' + (card.due < todayStr() ? ' overdue' : '') }, '🕒 ' + fmtDate(card.due)));
+    if (card.description) badges.push(el('span', { class: 'badge', title: 'Tiene descripción' }, '☰'));
     if (card.checklist.length) {
       const d = card.checklist.filter(i => i.done).length;
       badges.push(el('span', { class: 'badge' + (d === card.checklist.length ? ' done' : '') }, `☑ ${d}/${card.checklist.length}`));
     }
+    const who = card.assignees.filter(u => profileOf(u));
+    if (who.length) badges.push(el('span', { class: 'avatars' }, who.map(u => avatar(u, nameOf(profileOf(u))))));
     if (badges.length) n.append(el('div', { class: 'badges' }, badges));
 
     n.addEventListener('click', () => openCard(card.id));
     n.addEventListener('keydown', e => { if (e.key === 'Enter') openCard(card.id); });
     n.addEventListener('dragstart', e => {
       drag = { type: 'card', id: card.id };
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', card.id);
+      e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', card.id);
       e.stopPropagation();
       setTimeout(() => n.classList.add('dragging'));
     });
-    n.addEventListener('dragend', () => { drag = null; clearDropMarks(); render(); });
+    n.addEventListener('dragend', () => { drag = null; clearDropMarks(); renderBoard(); });
     return n;
   }
 
@@ -331,21 +639,23 @@
     const open = el('button', { class: 'add-card', onclick: show }, '+ Añadir tarjeta');
     holder.append(open);
     function show() {
-      const ta = el('textarea', { rows: 2, placeholder: 'Título de la tarjeta…' });
+      const ta = el('textarea', { rows: 2, placeholder: 'Título de la tarjeta…', maxLength: 500 });
+      const hide = () => holder.replaceChildren(open);
       const add = () => {
-        const t = ta.value.trim();
-        if (!t) return;
-        list.cards.push({ id: uid(), title: t, desc: '', labels: [], due: '', checklist: [] });
-        render();
-        // reabrir el compositor de la misma lista para añadir varias seguidas
-        const again = boardEl.querySelector(`.list[data-id="${list.id}"] .add-card`);
+        const t = ta.value.trim(); if (!t) return;
+        const last = S.cards.filter(c => c.list_id === list.id).sort(byPos).pop();
+        const card = { id: uuid(), board_id: S.boardId, list_id: list.id, title: t, description: '', labels: [], due: null,
+          assignees: [], checklist: [], pos: last ? last.pos + STEP : STEP };
+        S.cards.push(card);
+        renderBoard();
+        run(sb.from('cards').insert(card));
+        const again = app.querySelector(`.list[data-id="${list.id}"] .add-card`);
         if (again) again.click();
       };
       ta.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); add(); }
         if (e.key === 'Escape') hide();
       });
-      const hide = () => holder.replaceChildren(open);
       holder.replaceChildren(el('div', { class: 'composer' }, ta,
         el('div', { class: 'row' }, el('button', { class: 'btn primary', onclick: add }, 'Añadir'), el('button', { class: 'btn', onclick: hide }, '✕'))));
       ta.focus();
@@ -357,14 +667,16 @@
     const btn = el('button', { class: 'add-list-btn', onclick: show }, '+ Añadir otra lista');
     const holder = el('div', { style: 'flex:0 0 272px' }, btn);
     function show() {
-      const inp = el('input', { placeholder: 'Título de la lista…' });
+      const inp = el('input', { placeholder: 'Título de la lista…', maxLength: 200 });
       const add = () => {
-        const t = inp.value.trim();
-        if (!t) return;
-        board().lists.push({ id: uid(), title: t, cards: [] });
-        render();
-        boardEl.lastElementChild.querySelector('.add-list-btn').click();
-        boardEl.scrollLeft = boardEl.scrollWidth;
+        const t = inp.value.trim(); if (!t) return;
+        const last = S.lists[S.lists.length - 1];
+        const list = { id: uuid(), board_id: S.boardId, title: t, pos: last ? last.pos + STEP : STEP };
+        S.lists.push(list);
+        renderBoard();
+        run(sb.from('lists').insert(list));
+        app.lastElementChild.querySelector('.add-list-btn').click();
+        app.scrollLeft = app.scrollWidth;
       };
       inp.addEventListener('keydown', e => {
         if (e.key === 'Enter') add();
@@ -378,139 +690,200 @@
     return holder;
   }
 
-  // ---------- Búsqueda ----------
+  // ---------- Búsqueda, nombre y exportación ----------
   function applySearch() {
     const q = $('#search').value.trim().toLowerCase();
-    boardEl.querySelectorAll('.card').forEach(n => {
-      const f = findCard(n.dataset.id);
-      const hay = !q || (f && (f.card.title + ' ' + f.card.desc).toLowerCase().includes(q));
-      n.classList.toggle('hidden', !hay);
+    app.querySelectorAll('.card').forEach(n => {
+      const c = S.cards.find(x => x.id === n.dataset.id);
+      n.classList.toggle('hidden', !!q && !(c && (c.title + ' ' + c.description).toLowerCase().includes(q)));
     });
   }
   $('#search').addEventListener('input', applySearch);
 
-  // ---------- Modal de tarjeta ----------
-  const dlg = $('#cardDialog');
-  const modal = $('#cardModal');
-  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
-  dlg.addEventListener('close', render);
+  $('#boardName').addEventListener('change', e => {
+    const name = e.target.value.trim();
+    if (!name) { e.target.value = S.board.name; return; }
+    S.board.name = name; document.title = name + ' · Proyecto JC';
+    run(sb.from('boards').update({ name }).eq('id', S.boardId));
+  });
+
+  $('#exportBtn').addEventListener('click', () => {
+    const data = { board: { name: S.board.name }, lists: S.lists.map(l => ({ title: l.title,
+      cards: S.cards.filter(c => c.list_id === l.id).map(c => ({ title: c.title, description: c.description, labels: c.labels, due: c.due, checklist: c.checklist })) })) };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    const a = el('a', { href: url, download: `${S.board.name.replace(/[^\w-]+/g, '_')}-${todayStr()}.json` });
+    document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  });
+
+  // ---------- Diálogo de tarjeta ----------
+  const cardDlg = $('#cardDialog'), cardModal = $('#cardModal');
+  cardDlg.addEventListener('click', e => { if (e.target === cardDlg) cardDlg.close(); });
 
   function openCard(id) {
-    const f = findCard(id);
-    if (!f) return;
-    const { card, list } = f;
+    const card = S.cards.find(c => c.id === id);
+    if (!card) return;
+    S.openCardId = id;
+    const list = S.lists.find(l => l.id === card.list_id);
 
-    const title = el('input', { class: 'title-input', value: card.title, 'aria-label': 'Título',
-      oninput: e => { card.title = e.target.value; save(); } });
-    title.addEventListener('blur', () => { if (!card.title.trim()) { card.title = 'Sin título'; title.value = card.title; save(); } });
+    const title = el('input', { class: 'title-input', value: card.title, maxLength: 500, 'aria-label': 'Título',
+      oninput: e => { if (e.target.value.trim()) patchCard(card, { title: e.target.value }); } });
+    title.addEventListener('blur', () => { if (!title.value.trim()) title.value = card.title; });
 
-    const desc = el('textarea', { placeholder: 'Añade una descripción más detallada…', value: card.desc,
-      oninput: e => { card.desc = e.target.value; save(); } });
-
-    const due = el('input', { type: 'date', value: card.due, onchange: e => { card.due = e.target.value; save(); } });
+    const desc = el('textarea', { placeholder: 'Añade una descripción más detallada…', value: card.description, maxLength: 20000,
+      oninput: e => patchCard(card, { description: e.target.value }) });
+    const due = el('input', { type: 'date', value: card.due || '', onchange: e => patchCard(card, { due: e.target.value || null }) });
 
     const swatches = el('div', { class: 'swatches' }, COLORS.map(c => {
       const s = el('button', { class: 'swatch' + (card.labels.includes(c) ? ' on' : ''), style: `background:${c}`, 'aria-label': 'Etiqueta ' + c,
-        onclick: () => {
-          card.labels = card.labels.includes(c) ? card.labels.filter(x => x !== c) : [...card.labels, c];
-          s.classList.toggle('on'); save();
-        } });
+        onclick: () => { patchCard(card, { labels: card.labels.includes(c) ? card.labels.filter(x => x !== c) : [...card.labels, c] }); s.classList.toggle('on'); } });
       return s;
     }));
 
+    const people = el('div', { class: 'chips' }, S.members.map(m => {
+      const nm = nameOf(m.profiles, 'Usuario');
+      const chip = el('button', { class: 'chip' + (card.assignees.includes(m.user_id) ? ' on' : ''),
+        onclick: () => {
+          const on = card.assignees.includes(m.user_id);
+          patchCard(card, { assignees: on ? card.assignees.filter(x => x !== m.user_id) : [...card.assignees, m.user_id] });
+          chip.classList.toggle('on', !on);
+        } }, avatar(m.user_id, nm), nm);
+      return chip;
+    }));
+
     const checkBox = el('div');
+    const saveChecklist = () => patchCard(card, { checklist: card.checklist });
     function drawChecklist() {
       const done = card.checklist.filter(i => i.done).length;
       const items = card.checklist.map(it => el('div', { class: 'check' + (it.done ? ' done' : '') },
-        el('input', { type: 'checkbox', checked: it.done, onchange: e => { it.done = e.target.checked; save(); drawChecklist(); } }),
-        el('input', { type: 'text', value: it.text, oninput: e => { it.text = e.target.value; save(); } }),
-        el('button', { class: 'icon-btn', title: 'Quitar', onclick: () => { card.checklist = card.checklist.filter(x => x !== it); save(); drawChecklist(); } }, '✕'),
-      ));
-      const add = el('input', { type: 'text', placeholder: 'Añadir un elemento y pulsar Enter',
+        el('input', { type: 'checkbox', checked: it.done, onchange: e => { it.done = e.target.checked; saveChecklist(); drawChecklist(); } }),
+        el('input', { type: 'text', value: it.text, maxLength: 300, oninput: e => { it.text = e.target.value; saveChecklist(); } }),
+        el('button', { class: 'icon-btn', title: 'Quitar', onclick: () => { card.checklist = card.checklist.filter(x => x !== it); saveChecklist(); drawChecklist(); } }, '✕')));
+      const add = el('input', { type: 'text', 'data-new': '1', placeholder: 'Añadir un elemento y pulsar Enter', maxLength: 300,
         style: 'width:100%;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin-top:6px' });
       add.addEventListener('keydown', e => {
         if (e.key === 'Enter' && add.value.trim()) {
-          card.checklist.push({ id: uid(), text: add.value.trim(), done: false }); save(); drawChecklist();
-          checkBox.querySelector('input[placeholder^="Añadir"]').focus();
+          card.checklist = [...card.checklist, { id: uuid(), text: add.value.trim(), done: false }]; saveChecklist(); drawChecklist();
+          checkBox.querySelector('[data-new]').focus();
         }
       });
-      checkBox.replaceChildren(
-        card.checklist.length ? el('progress', { max: card.checklist.length, value: done }) : null,
-        ...items, add);
+      checkBox.replaceChildren(card.checklist.length ? el('progress', { max: card.checklist.length, value: done }) : null, ...items, add);
     }
     drawChecklist();
 
     const moveSel = el('select', { class: 'btn', onchange: e => {
-      const to = board().lists.find(l => l.id === e.target.value);
-      if (to && to !== list) { list.cards = list.cards.filter(c => c !== card); to.cards.push(card); save(); dlg.close(); }
-    } }, board().lists.map(l => el('option', { value: l.id, selected: l === list }, l.title)));
+      const last = S.cards.filter(c => c.list_id === e.target.value).sort(byPos).pop();
+      patchCard(card, { list_id: e.target.value, pos: last ? last.pos + STEP : STEP }, true);
+      S.cards.sort(byPos);
+    } }, S.lists.map(l => el('option', { value: l.id, selected: l === list }, l.title)));
 
-    modal.replaceChildren(
+    const commentsBox = el('div', { 'data-comments': '1' });
+    const newComment = el('textarea', { placeholder: 'Escribe un comentario…', maxLength: 5000, style: 'min-height:56px' });
+    const sendComment = el('button', { class: 'btn primary', onclick: async () => {
+      const body = newComment.value.trim(); if (!body) return;
+      sendComment.disabled = true;
+      const ok = await run(sb.from('comments').insert({ board_id: S.boardId, card_id: card.id, body }));
+      sendComment.disabled = false;
+      if (ok) { newComment.value = ''; loadComments(card.id); }
+    } }, 'Comentar');
+
+    cardModal.replaceChildren(
       title,
       el('div', {}, el('h3', {}, 'Etiquetas'), swatches),
+      el('div', {}, el('h3', {}, 'Asignados'), people),
       el('div', {}, el('h3', {}, 'Fecha límite'), due),
       el('div', {}, el('h3', {}, 'Descripción'), desc),
       el('div', {}, el('h3', {}, 'Checklist'), checkBox),
       el('div', {}, el('h3', {}, 'Mover a'), moveSel),
+      el('div', {}, el('h3', {}, 'Comentarios'), newComment, el('div', { class: 'row', style: 'margin-top:6px' }, sendComment), commentsBox),
       el('div', { class: 'modal-foot' },
         el('button', { class: 'btn danger', onclick: () => {
-          if (confirm('¿Eliminar esta tarjeta?')) { list.cards = list.cards.filter(c => c !== card); dlg.close(); }
+          if (!confirm('¿Eliminar esta tarjeta?')) return;
+          pending.delete(card.id);
+          S.cards = S.cards.filter(c => c !== card);
+          run(sb.from('cards').delete().eq('id', card.id));
+          cardDlg.close();
         } }, 'Eliminar tarjeta'),
-        el('button', { class: 'btn primary', onclick: () => dlg.close() }, 'Listo')),
-    );
-    dlg.showModal();
+        el('button', { class: 'btn primary', onclick: () => cardDlg.close() }, 'Listo')));
+    cardDlg.showModal();
+    loadComments(card.id);
   }
 
-  // ---------- Barra superior ----------
-  $('#boardSelect').addEventListener('change', e => { state.current = e.target.value; render(); });
-  $('#newBoard').addEventListener('click', () => {
-    const name = prompt('Nombre del nuevo tablero:');
-    if (!name || !name.trim()) return;
-    const b = { id: uid(), name: name.trim(), bg: BOARD_BGS[state.boards.length % BOARD_BGS.length], lists: [] };
-    state.boards.push(b); state.current = b.id; render();
-  });
-  $('#renameBoard').addEventListener('click', () => {
-    const name = prompt('Nuevo nombre:', board().name);
-    if (name && name.trim()) { board().name = name.trim(); render(); }
-  });
-  $('#deleteBoard').addEventListener('click', () => {
-    if (state.boards.length === 1) return toast('Debe quedar al menos un tablero');
-    if (!confirm(`¿Eliminar el tablero "${board().name}" con todo su contenido?`)) return;
-    state.boards = state.boards.filter(b => b !== board()); state.current = state.boards[0].id; render();
-  });
+  async function loadComments(cardId) {
+    const { data, error } = await sb.from('comments').select('id, body, created_at, user_id, profiles(email, display_name)')
+      .eq('card_id', cardId).order('created_at');
+    const box = cardModal.querySelector('[data-comments]');
+    if (error || !box || S.openCardId !== cardId) return;
+    box.replaceChildren(...data.map(c => {
+      const nm = nameOf(c.profiles, 'Usuario');
+      return el('div', { class: 'comment' }, avatar(c.user_id, nm),
+        el('div', { class: 'body' },
+          el('div', {}, el('span', { class: 'who' }, nm), ' ', el('span', { class: 'muted' }, fmtDateTime(c.created_at)),
+            c.user_id === S.user.id ? el('button', { class: 'icon-btn', title: 'Borrar comentario', onclick: async () => {
+              if (await run(sb.from('comments').delete().eq('id', c.id))) loadComments(cardId);
+            } }, '🗑') : null),
+          el('div', { class: 'text' }, c.body)));
+    }));
+  }
 
-  $('#exportBtn').addEventListener('click', () => {
-    const url = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
-    const a = el('a', { href: url, download: `tablero-${todayStr()}.json` });
-    document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  });
-  $('#importBtn').addEventListener('click', () => $('#importFile').click());
-  $('#importFile').addEventListener('change', async e => {
-    const file = e.target.files[0]; e.target.value = '';
-    if (!file) return;
-    try {
-      const data = JSON.parse(await file.text());
-      if (!Array.isArray(data.boards) || !data.boards.every(b => Array.isArray(b.lists))) throw new Error();
-      if (!confirm('Esto reemplazará todos tus tableros actuales. ¿Continuar?')) return;
-      state = data;
-      state.boards.forEach(b => b.lists.forEach(l => l.cards.forEach(c => {
-        c.labels = c.labels || []; c.checklist = c.checklist || []; c.desc = c.desc || ''; c.due = c.due || '';
-      })));
-      if (!state.boards.length) state = seed();
-      render(); toast('Importado correctamente');
-    } catch (err) { toast('Archivo no válido'); }
-  });
+  // ---------- Diálogo de miembros y ajustes ----------
+  const memDlg = $('#membersDialog'), memModal = $('#membersModal');
+  memDlg.addEventListener('click', e => { if (e.target === memDlg) memDlg.close(); });
+  $('#membersBtn').addEventListener('click', () => { renderMembers(); memDlg.showModal(); });
 
-  // Tema
+  function renderMembers() {
+    const owner = isOwner();
+    const rows = S.members.map(m => {
+      const nm = nameOf(m.profiles, 'Usuario');
+      return el('div', { class: 'member' }, avatar(m.user_id, nm),
+        el('div', { class: 'info' }, nm, m.profiles && m.profiles.display_name ? el('div', { class: 'muted' }, m.profiles.email) : null),
+        el('span', { class: 'muted' }, m.role === 'owner' ? 'Propietario' : 'Miembro'),
+        owner && m.role !== 'owner' ? el('button', { class: 'btn danger', onclick: async () => {
+          if (!confirm(`¿Quitar a ${nm} del tablero?`)) return;
+          if (await run(sb.from('board_members').delete().eq('board_id', S.boardId).eq('user_id', m.user_id))) { S.members = S.members.filter(x => x !== m); renderMembers(); }
+        } }, 'Quitar') : null);
+    });
+
+    const email = el('input', { type: 'email', placeholder: 'correo@ejemplo.com', style: 'flex:1;min-width:0' });
+    const invite = el('button', { class: 'btn primary', onclick: async () => {
+      const addr = email.value.trim(); if (!addr) return;
+      invite.disabled = true;
+      const { error } = await sb.rpc('invite_to_board', { p_board: S.boardId, p_email: addr });
+      invite.disabled = false;
+      if (error) return toast(errMsg(error));
+      toast('Invitación añadida'); await resync(); renderMembers();
+    } }, 'Invitar');
+
+    const bgs = el('div', { class: 'swatches' }, BOARD_BGS.map(c => el('button', {
+      class: 'swatch' + (S.board.bg === c ? ' on' : ''), style: `background:${c}`, 'aria-label': 'Color ' + c,
+      onclick: () => { S.board.bg = c; document.documentElement.style.setProperty('--board-bg', c); run(sb.from('boards').update({ bg: c }).eq('id', S.boardId)); renderMembers(); } })));
+
+    memModal.replaceChildren(
+      el('h3', {}, 'Miembros del tablero'), el('div', {}, rows),
+      owner ? el('div', {}, el('h3', {}, 'Invitar por correo'),
+        el('div', { class: 'row' }, email, invite),
+        el('p', { class: 'muted', style: 'margin:6px 0 0;font-size:12px' }, 'La persona debe tener ya una cuenta (el administrador la invita desde Supabase).')) : null,
+      el('div', {}, el('h3', {}, 'Color del tablero'), bgs),
+      el('div', { class: 'modal-foot' },
+        owner
+          ? el('button', { class: 'btn danger', onclick: async () => {
+              if (!confirm(`¿Eliminar el tablero "${S.board.name}" para todos? No se puede deshacer.`)) return;
+              if (await run(sb.from('boards').delete().eq('id', S.boardId))) { memDlg.close(); go(null, true); }
+            } }, 'Eliminar tablero')
+          : el('button', { class: 'btn danger', onclick: async () => {
+              if (!confirm('¿Salir de este tablero?')) return;
+              if (await run(sb.from('board_members').delete().eq('board_id', S.boardId).eq('user_id', S.user.id))) { memDlg.close(); go(null, true); }
+            } }, 'Salir del tablero'),
+        el('button', { class: 'btn primary', onclick: () => memDlg.close() }, 'Cerrar')));
+  }
+
+  // ---------- Tema ----------
   const applyTheme = t => document.documentElement.dataset.theme = t;
-  try { applyTheme(localStorage.getItem('tablero-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')); } catch (e) {}
+  try { applyTheme(localStorage.getItem('pjc-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')); } catch (e) {}
   $('#themeBtn').addEventListener('click', () => {
     const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
     applyTheme(t);
-    try { localStorage.setItem('tablero-theme', t); } catch (e) {}
+    try { localStorage.setItem('pjc-theme', t); } catch (e) {}
   });
-
-  render();
 })();
 </script>
 </body>
