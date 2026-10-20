@@ -27,6 +27,36 @@ Tablero tipo Trello con usuarios, contraseñas y tableros compartidos. Es una p�
 - Quien no es propietario puede salir del tablero; solo el propietario puede eliminarlo o invitar.
 - "¿Olvidaste tu contraseña?" envía un enlace para elegir una nueva.
 
+## Avisos por correo
+
+- Al **asignar una tarjeta**, la persona asignada recibe un correo (no se avisa a quien se asigna a sí mismo).
+- **Cada mañana (8:00, hora de Colombia)** cada persona recibe un solo correo con sus tareas vencidas, las que vencen hoy y las de mañana. Se ignoran las tarjetas marcadas como **Completada**, las que están en una lista llamada "Hecho / Terminado / Completado" y las vencidas hace más de 7 días.
+
+Los correos se envían con [Resend](https://resend.com) (gratis hasta 3.000 al mes) desde la propia base de datos.
+
+1. **Resend.** Crea una cuenta → *Domains* → *Add Domain* → `oscarzarateph.com`. Resend muestra unos registros DNS (TXT y MX); agrégalos en GoDaddy y pulsa *Verify*. Sin dominio verificado, Resend solo deja enviar a tu propio correo.
+   Luego *API Keys* → *Create API Key* (permiso *Sending access*) y copia la clave `re_…`.
+2. **Supabase.** SQL Editor → ejecuta `supabase/notifications.sql` (después de `schema.sql`). Si pide activar `pg_net` o `pg_cron`, actívalos en *Database → Extensions* y vuelve a ejecutarlo.
+3. **Guardar la clave cifrada** (cambia `re_TU_CLAVE` y el remitente por los tuyos; el remitente debe ser de tu dominio):
+
+   ```sql
+   select vault.create_secret('re_TU_CLAVE', 'resend_api_key');
+   select vault.create_secret('Proyecto JC <avisos@oscarzarateph.com>', 'mail_from');
+   ```
+4. **Probar.**
+
+   ```sql
+   select public.send_email('tu@correo.com', 'Prueba', '<p>Funciona</p>');
+   select public.send_due_reminders(true);  -- envía ya el resumen (true = aunque hoy ya se haya enviado)
+   ```
+5. **Si no llega nada**, mira la respuesta de Resend:
+
+   ```sql
+   select id, status_code, content from net._http_response order by created desc limit 5;
+   ```
+
+Para cambiar la hora o la zona horaria: la hora está en la línea `cron.schedule(...)` de `notifications.sql` (en UTC) y la zona en la constante `tz` de `send_due_reminders`.
+
 ## Notas
 
 - La seguridad no depende de esconder la página: la imponen las reglas de la base de datos (Row Level Security, en `supabase/schema.sql`). La clave `anon` es pública por diseño.

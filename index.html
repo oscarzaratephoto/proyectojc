@@ -682,7 +682,7 @@
     if (card.labels.length) n.append(el('div', { class: 'labels' }, card.labels.map(c => el('span', { class: 'label', style: `background:${c}` }))));
     n.append(el('div', {}, card.title));
     const badges = [];
-    if (card.due) badges.push(el('span', { class: 'badge' + (card.due < todayStr() ? ' overdue' : '') }, '🕒 ' + fmtDate(card.due)));
+    if (card.due) badges.push(el('span', { class: 'badge' + (card.done ? ' done' : card.due < todayStr() ? ' overdue' : '') }, (card.done ? '✓ ' : '🕒 ') + fmtDate(card.due)));
     if (card.description) badges.push(el('span', { class: 'badge', title: 'Tiene descripción' }, '☰'));
     if (card.checklist.length) {
       const d = card.checklist.filter(i => i.done).length;
@@ -860,8 +860,12 @@
     cardModal.replaceChildren(
       title,
       el('div', {}, el('h3', {}, 'Etiquetas'), swatches),
-      el('div', {}, el('h3', {}, 'Asignados'), people),
-      el('div', {}, el('h3', {}, 'Fecha límite'), due),
+      el('div', {}, el('h3', {}, 'Asignados'), people,
+        el('p', { class: 'muted', style: 'margin:6px 0 0;font-size:12px' }, 'Cada persona asignada recibe un correo.')),
+      el('div', {}, el('h3', {}, 'Fecha límite'),
+        el('div', { class: 'row', style: 'flex-wrap:wrap;gap:12px' }, due,
+          el('label', { class: 'row', style: 'gap:6px' }, el('input', { type: 'checkbox', checked: !!card.done, onchange: e => patchCard(card, { done: e.target.checked }) }), 'Completada')),
+        el('p', { class: 'muted', style: 'margin:6px 0 0;font-size:12px' }, 'Los asignados reciben un recordatorio por correo el día antes, el día de la fecha y mientras esté vencida (hasta 7 días), salvo que la marques como completada.')),
       el('div', {}, el('h3', {}, 'Descripción'), desc),
       el('div', {}, el('h3', {}, 'Checklist'), checkBox),
       el('div', {}, el('h3', {}, 'Mover a'), moveSel),
