@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Tablero</title>
+<style>
+  :root {
+    --bg: #1d2125; --surface: #101204; --list: #161a1d; --card: #22272b; --card-hover: #2c333a;
+    --text: #dee4ea; --muted: #8c9bab; --line: #38414a; --accent: #579dff; --danger: #f87168;
+    --topbar: #0f1214;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f5f7; --list: #ebecf0; --card: #fff; --card-hover: #f4f5f7; --text: #172b4d;
+    --muted: #626f86; --line: #dcdfe4; --accent: #0c66e4; --danger: #c9372c; --topbar: #fff;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--text); background: var(--bg); display: flex; flex-direction: column; overflow: hidden;
+  }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  .topbar {
+    display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--topbar);
+    border-bottom: 1px solid var(--line); flex-wrap: wrap;
+  }
+  .brand { font-weight: 700; font-size: 16px; margin-right: 6px; }
+  .topbar select, .topbar input[type=search] {
+    background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
+  }
+  .btn {
+    background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px;
+  }
+  .btn:hover { background: var(--card-hover); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.danger { color: var(--danger); }
+  .spacer { flex: 1; }
+  .board {
+    flex: 1; display: flex; align-items: flex-start; gap: 12px; padding: 14px; overflow-x: auto; overflow-y: hidden;
+    background: var(--board-bg, #0c66e4);
+  }
+  .list {
+    flex: 0 0 272px; max-height: 100%; display: flex; flex-direction: column; background: var(--list);
+    border-radius: 10px; padding: 8px;
+  }
+  .list.dragging, .card.dragging { opacity: .4; }
+  .list.over-list { outline: 2px dashed var(--accent); }
+  .list-head { display: flex; align-items: center; gap: 4px; padding: 2px 4px 8px; cursor: grab; }
+  .list-title {
+    flex: 1; font-weight: 600; background: transparent; border: 2px solid transparent; border-radius: 6px;
+    padding: 3px 6px; min-width: 0;
+  }
+  .list-title:focus { border-color: var(--accent); background: var(--card); outline: none; }
+  .count { color: var(--muted); font-size: 12px; }
+  .icon-btn { background: transparent; border: 0; border-radius: 6px; padding: 4px 7px; color: var(--muted); }
+  .icon-btn:hover { background: var(--card-hover); color: var(--text); }
+  .cards { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 8px; padding: 2px; }
+  .card {
+    background: var(--card); border-radius: 8px; padding: 8px 10px; cursor: pointer;
+    box-shadow: 0 1px 1px rgba(0,0,0,.25); word-break: break-word;
+  }
+  .card:hover { background: var(--card-hover); }
+  .card.drop-before { box-shadow: 0 -3px 0 var(--accent); }
+  .card.hidden { display: none; }
+  .labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .label { height: 8px; width: 40px; border-radius: 4px; }
+  .badges { display: flex; gap: 10px; margin-top: 6px; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
+  .badge.overdue { color: #fff; background: var(--danger); border-radius: 4px; padding: 0 5px; }
+  .badge.done { color: #4bce97; }
+  .add-card, .add-list-btn {
+    margin-top: 6px; text-align: left; background: transparent; border: 0; color: var(--muted);
+    padding: 7px 8px; border-radius: 8px;
+  }
+  .add-card:hover, .add-list-btn:hover { background: var(--card-hover); color: var(--text); }
+  .add-list-btn { flex: 0 0 272px; background: rgba(255,255,255,.22); color: #fff; margin: 0; }
+  .add-list-btn:hover { background: rgba(255,255,255,.32); color: #fff; }
+  .composer { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+  .composer textarea, .composer input {
+    width: 100%; background: var(--card); border: 1px solid var(--accent); border-radius: 8px; padding: 8px; resize: none;
+  }
+  .row { display: flex; gap: 6px; align-items: center; }
+  .empty { margin: auto; text-align: center; color: #fff; }
+
+  /* Modal */
+  dialog {
+    border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--text);
+    padding: 0; width: min(640px, 94vw); max-height: 92vh;
+  }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  .modal { padding: 18px; display: flex; flex-direction: column; gap: 14px; max-height: 92vh; overflow-y: auto; }
+  .modal h3 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .modal .title-input { font-size: 18px; font-weight: 600; width: 100%; background: transparent; border: 2px solid transparent; border-radius: 6px; padding: 4px 6px; }
+  .modal .title-input:focus, .modal textarea:focus, .modal input[type=date]:focus { border-color: var(--accent); outline: none; }
+  .modal textarea { width: 100%; min-height: 90px; background: var(--card); border: 2px solid var(--line); border-radius: 8px; padding: 8px; resize: vertical; }
+  .modal input[type=date] { background: var(--card); border: 2px solid var(--line); border-radius: 6px; padding: 5px 8px; color-scheme: dark light; }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatch { width: 40px; height: 28px; border-radius: 6px; border: 2px solid transparent; position: relative; }
+  .swatch.on { border-color: var(--text); }
+  .swatch.on::after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-weight: 700; }
+  .check { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+  .check input[type=text] { flex: 1; background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 4px 6px; }
+  .check input[type=text]:focus { border-color: var(--accent); outline: none; }
+  .check.done input[type=text] { text-decoration: line-through; color: var(--muted); }
+  progress { width: 100%; height: 8px; accent-color: #4bce97; }
+  .modal-foot { display: flex; justify-content: space-between; gap: 8px; }
+  .toast {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #000c; color: #fff;
+    padding: 8px 14px; border-radius: 8px; z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="brand">▦ Tablero</span>
+  <select id="boardSelect" aria-label="Tablero"></select>
+  <button class="btn" id="newBoard">+ Tablero</button>
+  <button class="btn" id="renameBoard">Renombrar</button>
+  <button class="btn danger" id="deleteBoard">Eliminar</button>
+  <span class="spacer"></span>
+  <input type="search" id="search" placeholder="Buscar tarjetas…" aria-label="Buscar tarjetas">
+  <button class="btn" id="exportBtn">Exportar</button>
+  <button class="btn" id="importBtn">Importar</button>
+  <input type="file" id="importFile" accept="application/json" hidden>
+  <button class="btn" id="themeBtn" title="Cambiar tema">◐</button>
+</header>
+
+<main class="board" id="board"></main>
+
+<dialog id="cardDialog"><div class="modal" id="cardModal"></div></dialog>
+
+<script>
+(() => {
+  'use strict';
+
+  const STORE = 'tablero-v1';
+  const COLORS = ['#4bce97', '#f5cd47', '#fea362', '#f87168', '#9f8fef', '#579dff', '#6cc3e0', '#94c748'];
+  const BOARD_BGS = ['#0c66e4', '#1f845a', '#c25100', '#ae2e24', '#6e5dc6', '#206a83'];
+  const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+
+  // ---------- Estado ----------
+  const seed = () => ({
+    current: null,
+    boards: [{
+      id: uid(), name: 'Mi primer tablero', bg: BOARD_BGS[0],
+      lists: [
+        { id: uid(), title: 'Por hacer', cards: [
+          { id: uid(), title: 'Haz clic en una tarjeta para editarla', desc: 'Aquí puedes añadir descripción, etiquetas, fecha límite y checklist.', labels: [COLORS[5]], due: '', checklist: [] },
+          { id: uid(), title: 'Arrastra tarjetas entre listas', desc: '', labels: [], due: '', checklist: [] },
+        ]},
+        { id: uid(), title: 'En progreso', cards: [
+          { id: uid(), title: 'También puedes arrastrar listas por su cabecera', desc: '', labels: [COLORS[1]], due: '', checklist: [{ id: uid(), text: 'Probarlo', done: true }, { id: uid(), text: 'Disfrutarlo', done: false }] },
+        ]},
+        { id: uid(), title: 'Hecho', cards: [] },
+      ],
+    }],
+  });
+
+  let state = load();
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem(STORE));
+      if (s && Array.isArray(s.boards) && s.boards.length) return s;
+    } catch (e) {}
+    return seed();
+  }
+  function save() {
+    try { localStorage.setItem(STORE, JSON.stringify(state)); }
+    catch (e) { toast('No se pudo guardar en el navegador'); }
+  }
+  const board = () => state.boards.find(b => b.id === state.current) || state.boards[0];
+  function findCard(id) {
+    for (const l of board().lists) {
+      const i = l.cards.findIndex(c => c.id === id);
+      if (i > -1) return { list: l, index: i, card: l.cards[i] };
+    }
+    return null;
+  }
+
+  // ---------- Utilidades DOM ----------
+  const $ = (s, r = document) => r.querySelector(s);
+  function el(tag, props = {}, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') n.className = v;
+      else if (k === 'style') n.style.cssText = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+      else if (k in n) n[k] = v;
+      else n.setAttribute(k, v);
+    }
+    for (const k of kids.flat()) if (k != null) n.append(k);
+    return n;
+  }
+  function toast(msg) {
+    const t = el('div', { class: 'toast' }, msg);
+    document.body.append(t);
+    setTimeout(() => t.remove(), 2200);
+  }
+  const todayStr = () => new Date().toISOString().slice(0, 10);
+  const fmtDate = d => new Date(d + 'T00:00:00').toLocaleDateString('es', { day: 'numeric', month: 'short' });
+
+  // ---------- Render ----------
+  const boardEl = $('#board');
+  let drag = null; // { type: 'card'|'list', id }
+
+  function render() {
+    const b = board();
+    state.current = b.id;
+    document.documentElement.style.setProperty('--board-bg', b.bg);
+
+    const sel = $('#boardSelect');
+    sel.replaceChildren(...state.boards.map(x => el('option', { value: x.id, selected: x.id === b.id }, x.name)));
+
+    boardEl.replaceChildren(...b.lists.map(renderList), renderAddList());
+    applySearch();
+    save();
+  }
+
+  function renderList(list) {
+    const cardsEl = el('div', { class: 'cards' }, list.cards.map(renderCard));
+    const root = el('section', { class: 'list', 'data-id': list.id });
+
+    const title = el('input', {
+      class: 'list-title', value: list.title, 'aria-label': 'Título de la lista',
+      onchange: e => { list.title = e.target.value.trim() || 'Sin título'; save(); },
+      onkeydown: e => { if (e.key === 'Enter') e.target.blur(); },
+    });
+    const head = el('div', { class: 'list-head', draggable: true },
+      title,
+      el('span', { class: 'count' }, String(list.cards.length)),
+      el('button', {
+        class: 'icon-btn', title: 'Eliminar lista', onclick: () => {
+          if (confirm(`¿Eliminar la lista "${list.title}" y sus ${list.cards.length} tarjetas?`)) {
+            board().lists = board().lists.filter(l => l !== list); render();
+          }
+        },
+      }, '🗑'),
+    );
+
+    // Arrastrar listas
+    head.addEventListener('dragstart', e => {
+      if (e.target !== head) return;
+      drag = { type: 'list', id: list.id };
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', list.id);
+      setTimeout(() => root.classList.add('dragging'));
+    });
+    head.addEventListener('dragend', () => { drag = null; render(); });
+
+    root.addEventListener('dragover', e => {
+      if (!drag) return;
+      e.preventDefault();
+      if (drag.type === 'list') {
+        root.classList.toggle('over-list', drag.id !== list.id);
+      } else {
+        clearDropMarks();
+        const before = cardAfter(cardsEl, e.clientY);
+        if (before) before.classList.add('drop-before');
+      }
+    });
+    root.addEventListener('dragleave', e => {
+      if (!root.contains(e.relatedTarget)) root.classList.remove('over-list');
+    });
+    root.addEventListener('drop', e => {
+      if (!drag) return;
+      e.preventDefault();
+      const lists = board().lists;
+      if (drag.type === 'list') {
+        const from = lists.findIndex(l => l.id === drag.id);
+        const to = lists.findIndex(l => l.id === list.id);
+        if (from > -1 && to > -1 && from !== to) lists.splice(to, 0, lists.splice(from, 1)[0]);
+      } else {
+        const found = findCard(drag.id);
+        if (found) {
+          const before = cardAfter(cardsEl, e.clientY);
+          found.list.cards.splice(found.index, 1);
+          let idx = before ? list.cards.findIndex(c => c.id === before.dataset.id) : list.cards.length;
+          if (idx < 0) idx = list.cards.length;
+          list.cards.splice(idx, 0, found.card);
+        }
+      }
+      drag = null; render();
+    });
+
+    root.append(head, cardsEl, renderComposer(list));
+    return root;
+  }
+
+  // Devuelve la tarjeta visible justo debajo del puntero (la nueva posición será antes de ella)
+  function cardAfter(container, y) {
+    const items = [...container.querySelectorAll('.card:not(.dragging):not(.hidden)')];
+    return items.find(c => { const r = c.getBoundingClientRect(); return y < r.top + r.height / 2; }) || null;
+  }
+  function clearDropMarks() { document.querySelectorAll('.drop-before').forEach(n => n.classList.remove('drop-before')); }
+
+  function renderCard(card) {
+    const n = el('article', { class: 'card', draggable: true, 'data-id': card.id, tabindex: 0 });
+    if (card.labels.length) n.append(el('div', { class: 'labels' }, card.labels.map(c => el('span', { class: 'label', style: `background:${c}` }))));
+    n.append(el('div', {}, card.title));
+
+    const badges = [];
+    if (card.due) {
+      const overdue = card.due < todayStr();
+      badges.push(el('span', { class: 'badge' + (overdue ? ' overdue' : '') }, '🕒 ' + fmtDate(card.due)));
+    }
+    if (card.desc) badges.push(el('span', { class: 'badge', title: 'Tiene descripción' }, '☰'));
+    if (card.checklist.length) {
+      const d = card.checklist.filter(i => i.done).length;
+      badges.push(el('span', { class: 'badge' + (d === card.checklist.length ? ' done' : '') }, `☑ ${d}/${card.checklist.length}`));
+    }
+    if (badges.length) n.append(el('div', { class: 'badges' }, badges));
+
+    n.addEventListener('click', () => openCard(card.id));
+    n.addEventListener('keydown', e => { if (e.key === 'Enter') openCard(card.id); });
+    n.addEventListener('dragstart', e => {
+      drag = { type: 'card', id: card.id };
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', card.id);
+      e.stopPropagation();
+      setTimeout(() => n.classList.add('dragging'));
+    });
+    n.addEventListener('dragend', () => { drag = null; clearDropMarks(); render(); });
+    return n;
+  }
+
+  function renderComposer(list) {
+    const holder = el('div');
+    const open = el('button', { class: 'add-card', onclick: show }, '+ Añadir tarjeta');
+    holder.append(open);
+    function show() {
+      const ta = el('textarea', { rows: 2, placeholder: 'Título de la tarjeta…' });
+      const add = () => {
+        const t = ta.value.trim();
+        if (!t) return;
+        list.cards.push({ id: uid(), title: t, desc: '', labels: [], due: '', checklist: [] });
+        render();
+        // reabrir el compositor de la misma lista para añadir varias seguidas
+        const again = boardEl.querySelector(`.list[data-id="${list.id}"] .add-card`);
+        if (again) again.click();
+      };
+      ta.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); add(); }
+        if (e.key === 'Escape') hide();
+      });
+      const hide = () => holder.replaceChildren(open);
+      holder.replaceChildren(el('div', { class: 'composer' }, ta,
+        el('div', { class: 'row' }, el('button', { class: 'btn primary', onclick: add }, 'Añadir'), el('button', { class: 'btn', onclick: hide }, '✕'))));
+      ta.focus();
+    }
+    return holder;
+  }
+
+  function renderAddList() {
+    const btn = el('button', { class: 'add-list-btn', onclick: show }, '+ Añadir otra lista');
+    const holder = el('div', { style: 'flex:0 0 272px' }, btn);
+    function show() {
+      const inp = el('input', { placeholder: 'Título de la lista…' });
+      const add = () => {
+        const t = inp.value.trim();
+        if (!t) return;
+        board().lists.push({ id: uid(), title: t, cards: [] });
+        render();
+        boardEl.lastElementChild.querySelector('.add-list-btn').click();
+        boardEl.scrollLeft = boardEl.scrollWidth;
+      };
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Enter') add();
+        if (e.key === 'Escape') holder.replaceChildren(btn);
+      });
+      holder.replaceChildren(el('div', { class: 'list' }, el('div', { class: 'composer', style: 'margin:0' }, inp,
+        el('div', { class: 'row' }, el('button', { class: 'btn primary', onclick: add }, 'Añadir lista'),
+          el('button', { class: 'btn', onclick: () => holder.replaceChildren(btn) }, '✕')))));
+      inp.focus();
+    }
+    return holder;
+  }
+
+  // ---------- Búsqueda ----------
+  function applySearch() {
+    const q = $('#search').value.trim().toLowerCase();
+    boardEl.querySelectorAll('.card').forEach(n => {
+      const f = findCard(n.dataset.id);
+      const hay = !q || (f && (f.card.title + ' ' + f.card.desc).toLowerCase().includes(q));
+      n.classList.toggle('hidden', !hay);
+    });
+  }
+  $('#search').addEventListener('input', applySearch);
+
+  // ---------- Modal de tarjeta ----------
+  const dlg = $('#cardDialog');
+  const modal = $('#cardModal');
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+  dlg.addEventListener('close', render);
+
+  function openCard(id) {
+    const f = findCard(id);
+    if (!f) return;
+    const { card, list } = f;
+
+    const title = el('input', { class: 'title-input', value: card.title, 'aria-label': 'Título',
+      oninput: e => { card.title = e.target.value; save(); } });
+    title.addEventListener('blur', () => { if (!card.title.trim()) { card.title = 'Sin título'; title.value = card.title; save(); } });
+
+    const desc = el('textarea', { placeholder: 'Añade una descripción más detallada…', value: card.desc,
+      oninput: e => { card.desc = e.target.value; save(); } });
+
+    const due = el('input', { type: 'date', value: card.due, onchange: e => { card.due = e.target.value; save(); } });
+
+    const swatches = el('div', { class: 'swatches' }, COLORS.map(c => {
+      const s = el('button', { class: 'swatch' + (card.labels.includes(c) ? ' on' : ''), style: `background:${c}`, 'aria-label': 'Etiqueta ' + c,
+        onclick: () => {
+          card.labels = card.labels.includes(c) ? card.labels.filter(x => x !== c) : [...card.labels, c];
+          s.classList.toggle('on'); save();
+        } });
+      return s;
+    }));
+
+    const checkBox = el('div');
+    function drawChecklist() {
+      const done = card.checklist.filter(i => i.done).length;
+      const items = card.checklist.map(it => el('div', { class: 'check' + (it.done ? ' done' : '') },
+        el('input', { type: 'checkbox', checked: it.done, onchange: e => { it.done = e.target.checked; save(); drawChecklist(); } }),
+        el('input', { type: 'text', value: it.text, oninput: e => { it.text = e.target.value; save(); } }),
+        el('button', { class: 'icon-btn', title: 'Quitar', onclick: () => { card.checklist = card.checklist.filter(x => x !== it); save(); drawChecklist(); } }, '✕'),
+      ));
+      const add = el('input', { type: 'text', placeholder: 'Añadir un elemento y pulsar Enter',
+        style: 'width:100%;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin-top:6px' });
+      add.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && add.value.trim()) {
+          card.checklist.push({ id: uid(), text: add.value.trim(), done: false }); save(); drawChecklist();
+          checkBox.querySelector('input[placeholder^="Añadir"]').focus();
+        }
+      });
+      checkBox.replaceChildren(
+        card.checklist.length ? el('progress', { max: card.checklist.length, value: done }) : null,
+        ...items, add);
+    }
+    drawChecklist();
+
+    const moveSel = el('select', { class: 'btn', onchange: e => {
+      const to = board().lists.find(l => l.id === e.target.value);
+      if (to && to !== list) { list.cards = list.cards.filter(c => c !== card); to.cards.push(card); save(); dlg.close(); }
+    } }, board().lists.map(l => el('option', { value: l.id, selected: l === list }, l.title)));
+
+    modal.replaceChildren(
+      title,
+      el('div', {}, el('h3', {}, 'Etiquetas'), swatches),
+      el('div', {}, el('h3', {}, 'Fecha límite'), due),
+      el('div', {}, el('h3', {}, 'Descripción'), desc),
+      el('div', {}, el('h3', {}, 'Checklist'), checkBox),
+      el('div', {}, el('h3', {}, 'Mover a'), moveSel),
+      el('div', { class: 'modal-foot' },
+        el('button', { class: 'btn danger', onclick: () => {
+          if (confirm('¿Eliminar esta tarjeta?')) { list.cards = list.cards.filter(c => c !== card); dlg.close(); }
+        } }, 'Eliminar tarjeta'),
+        el('button', { class: 'btn primary', onclick: () => dlg.close() }, 'Listo')),
+    );
+    dlg.showModal();
+  }
+
+  // ---------- Barra superior ----------
+  $('#boardSelect').addEventListener('change', e => { state.current = e.target.value; render(); });
+  $('#newBoard').addEventListener('click', () => {
+    const name = prompt('Nombre del nuevo tablero:');
+    if (!name || !name.trim()) return;
+    const b = { id: uid(), name: name.trim(), bg: BOARD_BGS[state.boards.length % BOARD_BGS.length], lists: [] };
+    state.boards.push(b); state.current = b.id; render();
+  });
+  $('#renameBoard').addEventListener('click', () => {
+    const name = prompt('Nuevo nombre:', board().name);
+    if (name && name.trim()) { board().name = name.trim(); render(); }
+  });
+  $('#deleteBoard').addEventListener('click', () => {
+    if (state.boards.length === 1) return toast('Debe quedar al menos un tablero');
+    if (!confirm(`¿Eliminar el tablero "${board().name}" con todo su contenido?`)) return;
+    state.boards = state.boards.filter(b => b !== board()); state.current = state.boards[0].id; render();
+  });
+
+  $('#exportBtn').addEventListener('click', () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
+    const a = el('a', { href: url, download: `tablero-${todayStr()}.json` });
+    document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  });
+  $('#importBtn').addEventListener('click', () => $('#importFile').click());
+  $('#importFile').addEventListener('change', async e => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (!Array.isArray(data.boards) || !data.boards.every(b => Array.isArray(b.lists))) throw new Error();
+      if (!confirm('Esto reemplazará todos tus tableros actuales. ¿Continuar?')) return;
+      state = data;
+      state.boards.forEach(b => b.lists.forEach(l => l.cards.forEach(c => {
+        c.labels = c.labels || []; c.checklist = c.checklist || []; c.desc = c.desc || ''; c.due = c.due || '';
+      })));
+      if (!state.boards.length) state = seed();
+      render(); toast('Importado correctamente');
+    } catch (err) { toast('Archivo no válido'); }
+  });
+
+  // Tema
+  const applyTheme = t => document.documentElement.dataset.theme = t;
+  try { applyTheme(localStorage.getItem('tablero-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')); } catch (e) {}
+  $('#themeBtn').addEventListener('click', () => {
+    const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    applyTheme(t);
+    try { localStorage.setItem('tablero-theme', t); } catch (e) {}
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
