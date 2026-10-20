@@ -46,7 +46,8 @@
 
   main { flex: 1; min-height: 0; overflow: auto; }
   main.board {
-    display: flex; align-items: flex-start; gap: 12px; padding: 14px; overflow-x: auto; overflow-y: hidden;
+    display: flex; flex-wrap: wrap; align-items: flex-start; align-content: flex-start; gap: 12px; padding: 14px;
+    overflow-x: hidden; overflow-y: auto;
     background: var(--board-bg, #0c66e4);
   }
 
@@ -81,7 +82,7 @@
 
   /* Listas y tarjetas */
   .list {
-    flex: 0 0 272px; max-height: 100%; display: flex; flex-direction: column; background: var(--list);
+    flex: 0 0 272px; display: flex; flex-direction: column; background: var(--list);
     border-radius: 10px; padding: 8px;
   }
   .list.dragging, .card.dragging { opacity: .4; }
@@ -95,7 +96,7 @@
   .count { color: var(--muted); font-size: 12px; }
   .icon-btn { background: transparent; border: 0; border-radius: 6px; padding: 4px 7px; color: var(--muted); }
   .icon-btn:hover { background: var(--card-hover); color: var(--text); }
-  .cards { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 8px; padding: 2px; }
+  .cards { display: flex; flex-direction: column; gap: 8px; min-height: 8px; padding: 2px; }
   .card {
     background: var(--card); border-radius: 8px; padding: 8px 10px; cursor: pointer;
     box-shadow: 0 1px 1px rgba(0,0,0,.25); word-break: break-word;
@@ -118,7 +119,9 @@
     padding: 7px 8px; border-radius: 8px;
   }
   .add-card:hover, .add-list-btn:hover { background: var(--card-hover); color: var(--text); }
-  .add-list-btn { flex: 0 0 272px; background: rgba(255,255,255,.22); color: #fff; margin: 0; width: 272px; }
+  .add-list-holder { flex: 0 0 272px; }
+  .add-list-btn { background: rgba(255,255,255,.22); color: #fff; margin: 0; width: 100%; }
+  @media (max-width: 700px) { .list, .add-list-holder { flex-basis: 100%; } }
   .add-list-btn:hover { background: rgba(255,255,255,.32); color: #fff; }
   .composer { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
   .composer textarea, .composer input {
@@ -293,7 +296,7 @@
     $('#boardTools').hidden = view !== 'board';
     $('#who').textContent = S.user ? S.user.email : '';
     app.className = view === 'board' ? 'board' : '';
-    if (view !== 'board') app.scrollLeft = 0;
+    if (view !== 'board') app.scrollTop = 0;
   }
 
   // ---------- Autenticación ----------
@@ -531,11 +534,9 @@
   function renderBoard() {
     S.dirty = false;
     document.documentElement.style.setProperty('--board-bg', S.board.bg);
-    const keepX = app.scrollLeft;
-    const keepY = new Map([...app.querySelectorAll('.list')].map(l => [l.dataset.id, l.querySelector('.cards')?.scrollTop || 0]));
+    const keepTop = app.scrollTop;
     app.replaceChildren(...S.lists.map(renderList), renderAddList());
-    app.scrollLeft = keepX;
-    app.querySelectorAll('.list').forEach(l => { const c = l.querySelector('.cards'); if (c) c.scrollTop = keepY.get(l.dataset.id) || 0; });
+    app.scrollTop = keepTop;
     applySearch();
   }
 
@@ -665,7 +666,7 @@
 
   function renderAddList() {
     const btn = el('button', { class: 'add-list-btn', onclick: show }, '+ Añadir otra lista');
-    const holder = el('div', { style: 'flex:0 0 272px' }, btn);
+    const holder = el('div', { class: 'add-list-holder' }, btn);
     function show() {
       const inp = el('input', { placeholder: 'Título de la lista…', maxLength: 200 });
       const add = () => {
@@ -676,7 +677,7 @@
         renderBoard();
         run(sb.from('lists').insert(list));
         app.lastElementChild.querySelector('.add-list-btn').click();
-        app.scrollLeft = app.scrollWidth;
+        app.scrollTop = app.scrollHeight;
       };
       inp.addEventListener('keydown', e => {
         if (e.key === 'Enter') add();
