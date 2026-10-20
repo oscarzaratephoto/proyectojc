@@ -2,9 +2,17 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Proyecto JC</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0c66e4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Proyecto JC">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
   :root {
     --bg: #1d2125; --list: #161a1d; --card: #22272b; --card-hover: #2c333a;
@@ -168,6 +176,54 @@
   .verse .txt { font-style: italic; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .verse.open .txt { -webkit-line-clamp: unset; }
   .verse .ref { font-style: normal; font-weight: 600; white-space: nowrap; }
+  /* Pantalla completa en móviles con muesca (app instalada) */
+  .topbar { padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-left: calc(14px + env(safe-area-inset-left, 0px)); padding-right: calc(14px + env(safe-area-inset-right, 0px)); }
+  main { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+  .filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 6px 14px; background: var(--topbar); border-bottom: 1px solid var(--line); font-size: 13px; }
+  .filters select { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+  .label.named { height: auto; width: auto; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #1d2125; line-height: 16px; }
+  .lbl { display: inline-flex; align-items: center; gap: 6px; border: 2px solid var(--line); background: var(--card); border-radius: 6px; padding: 3px 10px 3px 4px; }
+  .lbl.on { border-color: var(--text); }
+  .lbl .dot { width: 22px; height: 14px; border-radius: 3px; }
+
+  /* Mis tareas */
+  .tasks { max-width: 760px; margin: 0 auto; padding: 20px 14px 40px; }
+  .tasks h2 { margin: 0; font-size: 18px; }
+  .tasks h3 { margin: 22px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .tasks h3.late { color: var(--danger); }
+  .task { display: flex; gap: 10px; align-items: flex-start; background: var(--card); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+  .task:hover { background: var(--card-hover); }
+  .task .meta { color: var(--muted); font-size: 12px; margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .task .strike { text-decoration: line-through; color: var(--muted); }
+  .bdot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--c); }
+  .tile.tasks-tile { background: var(--card); color: var(--text); border: 1px solid var(--line); }
+
+  /* Calendario */
+  main.cal { background: var(--board-bg, #0c66e4); padding: 14px; }
+  .calwrap { background: var(--list); border-radius: 12px; padding: 12px; max-width: 1100px; margin: 0 auto; }
+  .calhead { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .calhead h2 { margin: 0; font-size: 16px; flex: 1; }
+  .calgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .calgrid .dow { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0; }
+  .calday { min-height: 92px; background: var(--card); border-radius: 8px; padding: 4px; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+  .calday.out { opacity: .45; }
+  .calday.today { outline: 2px solid var(--accent); }
+  .calday .n { font-size: 12px; color: var(--muted); }
+  .pill { font-size: 11.5px; padding: 2px 5px; border-radius: 4px; background: var(--card-hover); border-left: 3px solid var(--c, var(--accent)); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pill.done { text-decoration: line-through; color: var(--muted); }
+  .pill.late { background: var(--danger); color: #fff; }
+  .agenda { display: none; }
+  .agenda h4 { margin: 14px 0 6px; font-size: 13px; color: var(--muted); }
+  .agenda .pill { font-size: 14px; padding: 8px 10px; margin-bottom: 6px; white-space: normal; }
+  @media (max-width: 700px) {
+    .calgrid { display: none; } .agenda { display: block; }
+    #boardTools { flex: 1 1 100%; }
+    .board-name, #search { flex: 1 1 100%; width: auto; }
+    #boardTools .t { display: none; }
+  }
+  #boardTools { flex-wrap: wrap; }
+  .topbar .btn { white-space: nowrap; }
   #toasts {
     position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 10;
     display: flex; flex-direction: column; gap: 6px; align-items: center; max-width: 90vw; pointer-events: none;
@@ -179,10 +235,14 @@
 
 <header class="topbar" id="topbar" hidden>
   <a class="brand" id="brand" href="./">▦ Proyecto JC</a>
+  <button class="btn" id="tasksBtn">✔ Mis tareas</button>
   <span class="row" id="boardTools" hidden>
     <input class="board-name" id="boardName" aria-label="Nombre del tablero" maxlength="120">
-    <button class="btn" id="membersBtn">👥 Miembros</button>
-    <button class="btn" id="exportBtn" title="Descargar copia del tablero">Exportar</button>
+    <button class="btn" id="viewBtn" title="Cambiar entre tablero y calendario">📅<span class="t"> Calendario</span></button>
+    <button class="btn" id="filterBtn" title="Filtros">⚑<span class="t"> Filtros</span></button>
+    <button class="btn" id="membersBtn" title="Miembros y ajustes">👥<span class="t"> Miembros</span></button>
+    <button class="btn" id="archiveBtn" title="Archivados">🗄<span class="t"> Archivados</span></button>
+    <button class="btn" id="exportBtn" title="Descargar copia del tablero">⬇<span class="t"> Exportar</span></button>
     <input type="search" id="search" placeholder="Buscar…" aria-label="Buscar tarjetas">
   </span>
   <span class="spacer"></span>
@@ -192,11 +252,13 @@
 </header>
 
 <div class="verse" id="verse" title="Toca para ver completo"><span class="txt"></span></div>
+<div class="filters" id="filters" hidden></div>
 
 <main id="app"></main>
 
 <dialog id="cardDialog"><div class="modal" id="cardModal"></div></dialog>
 <dialog id="membersDialog"><div class="modal" id="membersModal"></div></dialog>
+<dialog id="archiveDialog"><div class="modal" id="archiveModal"></div></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
@@ -206,6 +268,7 @@
   'use strict';
 
   const COLORS = ['#4bce97', '#f5cd47', '#fea362', '#f87168', '#9f8fef', '#579dff', '#6cc3e0', '#94c748'];
+  const COLOR_NAMES = { '#4bce97': 'Verde', '#f5cd47': 'Amarillo', '#fea362': 'Naranja', '#f87168': 'Rojo', '#9f8fef': 'Morado', '#579dff': 'Azul', '#6cc3e0': 'Celeste', '#94c748': 'Lima' };
   const BOARD_BGS = ['#0c66e4', '#1f845a', '#c25100', '#ae2e24', '#6e5dc6', '#206a83'];
   const STEP = 1024;
 
@@ -220,7 +283,7 @@
       else if (k in n) n[k] = v;
       else n.setAttribute(k, v);
     }
-    for (const k of kids.flat()) if (k != null) n.append(k);
+    for (const k of kids.flat(Infinity)) if (k != null) n.append(k);
     return n;
   }
   function toast(msg) {
@@ -237,6 +300,8 @@
   const fmtDate = d => new Date(d + 'T00:00:00').toLocaleDateString('es', { day: 'numeric', month: 'short' });
   const fmtDateTime = d => new Date(d).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const byPos = (a, b) => a.pos - b.pos;
+  const setTool = (b, icon, text) => b.replaceChildren(icon, el('span', { class: 't' }, ' ' + text));
+  const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
   const errMsg = e => {
     const m = (e && e.message) || String(e);
     if (/Invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos';
@@ -278,12 +343,14 @@
     boards: [],
     boardId: null, board: null, lists: [], cards: [], members: [],
     channel: null, dirty: false, openCardId: null,
+    filter: { who: '', label: '', overdue: false }, filtersOpen: false, boardView: 'board', calMonth: null,
   };
   let needPassword = false;
   let started = false;
   let drag = null;
 
   const isOwner = () => S.members.some(m => m.user_id === S.user.id && m.role === 'owner');
+  const labelName = c => ((S.board && S.board.label_names) || {})[c] || '';
   const profileOf = uid => (S.members.find(m => m.user_id === uid) || {}).profiles;
 
   // ---------- Navegación ----------
@@ -292,11 +359,15 @@
     history[replace ? 'replaceState' : 'pushState'](null, '', url);
     navigate();
   }
+  function goTasks() { history.pushState(null, '', location.pathname + '?t=1'); navigate(); }
   async function navigate() {
     await flushAll();
-    const id = new URLSearchParams(location.search).get('b');
-    if (id) openBoard(id); else showHome();
+    const q = new URLSearchParams(location.search);
+    if (q.get('t')) showTasks();
+    else if (q.get('b')) openBoard(q.get('b'), { view: q.get('v'), card: q.get('c') });
+    else showHome();
   }
+  $('#tasksBtn').addEventListener('click', goTasks);
   window.addEventListener('popstate', () => { if (S.user && !needPassword) navigate(); });
   $('#brand').addEventListener('click', e => { e.preventDefault(); go(null); });
 
@@ -304,6 +375,7 @@
     S.view = view;
     $('#topbar').hidden = view === 'auth';
     $('#boardTools').hidden = view !== 'board';
+    $('#filters').hidden = view !== 'board' || !S.filtersOpen;
     $('#who').textContent = S.user ? S.user.email : '';
     app.className = view === 'board' ? 'board' : '';
     if (view !== 'board') app.scrollTop = 0;
@@ -407,8 +479,51 @@
       go(b.id);
     } }, '+ Crear tablero');
     app.replaceChildren(el('div', { class: 'home' },
-      el('h2', {}, 'Tus tableros'), el('div', { class: 'tiles' }, mine.map(tile), create),
+      el('h2', {}, 'Tus tableros'), el('div', { class: 'tiles' }, el('button', { class: 'tile tasks-tile', onclick: goTasks }, el('span', {}, '✔ Mis tareas'), el('small', {}, 'Todo lo que tienes asignado')), mine.map(tile), create),
       shared.length ? [el('h2', { style: 'margin-top:28px' }, 'Compartidos contigo'), el('div', { class: 'tiles' }, shared.map(tile))] : null));
+  }
+
+  // ---------- Mis tareas ----------
+  async function showTasks() {
+    teardownBoard(); setChrome('tasks');
+    document.title = 'Mis tareas · Proyecto JC';
+    app.replaceChildren(el('div', { class: 'center' }, 'Cargando…'));
+    const [c, b] = await Promise.all([
+      sb.from('cards').select('*').contains('assignees', [S.user.id]).eq('archived', false),
+      sb.from('boards').select('id,name,bg'),
+    ]);
+    if (S.view !== 'tasks') return;
+    if (c.error || b.error) { toast(errMsg(c.error || b.error)); return; }
+    const ids = [...new Set(c.data.map(x => x.list_id))];
+    const lr = ids.length ? await sb.from('lists').select('id,title,archived').in('id', ids) : { data: [], error: null };
+    if (S.view !== 'tasks') return;
+    if (lr.error) { toast(errMsg(lr.error)); return; }
+    const lists = new Map(lr.data.map(l => [l.id, l])), boards = new Map(b.data.map(x => [x.id, x]));
+    const mine = c.data.filter(x => lists.get(x.list_id) && !lists.get(x.list_id).archived);
+    const today = todayStr();
+    const cmp = (a, z) => (a.due || '9999').localeCompare(z.due || '9999') || a.title.localeCompare(z.title);
+    const groups = [
+      ['Vencidas', 'late', mine.filter(x => !x.done && x.due && x.due < today)],
+      ['Hoy', '', mine.filter(x => !x.done && x.due === today)],
+      ['Próximas', '', mine.filter(x => !x.done && x.due && x.due > today)],
+      ['Sin fecha', '', mine.filter(x => !x.done && !x.due)],
+    ];
+    const item = x => {
+      const bd = boards.get(x.board_id) || {}, ls = lists.get(x.list_id) || {};
+      const cb = el('input', { type: 'checkbox', checked: !!x.done, 'aria-label': 'Completada', onclick: e => e.stopPropagation(),
+        onchange: async e => { await run(sb.from('cards').update({ done: e.target.checked }).eq('id', x.id)); showTasks(); } });
+      return el('div', { class: 'task', onclick: () => { history.pushState(null, '', location.pathname + '?b=' + encodeURIComponent(x.board_id) + '&c=' + encodeURIComponent(x.id)); navigate(); } },
+        cb, el('div', { style: 'flex:1;min-width:0' }, el('div', { class: x.done ? 'strike' : '' }, x.title),
+          el('div', { class: 'meta' }, el('span', { class: 'bdot', style: `--c:${bd.bg || '#579dff'}` }), el('span', {}, bd.name || 'Tablero'), el('span', {}, '·'), el('span', {}, ls.title || ''),
+            x.due ? el('span', { class: 'badge' + (x.done ? ' done' : x.due < today ? ' overdue' : '') }, (x.done ? '✓ ' : '🕒 ') + fmtDate(x.due)) : null)));
+    };
+    const section = ([title, cls, arr]) => arr.length ? [el('h3', { class: cls }, `${title} (${arr.length})`), arr.sort(cmp).map(item)] : null;
+    const done = mine.filter(x => x.done).sort(cmp);
+    const pending = groups.reduce((n, g) => n + g[2].length, 0);
+    app.replaceChildren(el('div', { class: 'tasks' },
+      el('div', { class: 'row' }, el('h2', { style: 'flex:1' }, 'Mis tareas'), el('button', { class: 'btn', onclick: showTasks }, '↻ Actualizar')),
+      pending ? groups.map(section) : el('p', { class: 'muted' }, mine.length ? 'No tienes tareas pendientes. ¡Buen trabajo!' : 'No tienes tarjetas asignadas.'),
+      done.length ? el('details', { style: 'margin-top:22px' }, el('summary', { class: 'muted', style: 'cursor:pointer' }, `Completadas (${done.length})`), el('div', { style: 'margin-top:8px' }, done.map(item))) : null));
   }
 
   // ---------- Tablero: carga y tiempo real ----------
@@ -424,7 +539,7 @@
     return { board: b.data, lists: l.data, cards: c.data, members: m.data };
   }
 
-  async function openBoard(id) {
+  async function openBoard(id, opts = {}) {
     teardownBoard(); setChrome('board');
     app.replaceChildren(el('div', { class: 'center', style: 'width:100%;color:#fff' }, 'Cargando…'));
     let d;
@@ -435,8 +550,16 @@
     $('#boardName').value = S.board.name;
     $('#search').value = '';
     document.title = S.board.name + ' · Proyecto JC';
+    S.boardView = opts.view === 'calendario' ? 'calendar' : 'board';
+    S.filter = { who: '', label: '', overdue: false };
+    const now = new Date(); S.calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    updateViewBtn(); renderFilters();
     renderBoard();
     subscribe(id);
+    if (opts.card) {
+      history.replaceState(null, '', location.pathname + '?b=' + encodeURIComponent(id) + (S.boardView === 'calendar' ? '&v=calendario' : ''));
+      openCard(opts.card);
+    }
   }
 
   async function resync() {
@@ -456,6 +579,7 @@
     document.title = 'Proyecto JC';
     if ($('#cardDialog').open) $('#cardDialog').close();
     if ($('#membersDialog').open) $('#membersDialog').close();
+    if ($('#archiveDialog').open) $('#archiveDialog').close();
   }
 
   function subscribe(id) {
@@ -505,13 +629,14 @@
   const typing = () => { const a = document.activeElement; return a && /^(INPUT|TEXTAREA)$/.test(a.tagName) && app.contains(a); };
   function renderSoon() {
     if (S.view !== 'board') return;
-    if (typing() || drag || $('#cardDialog').open || $('#membersDialog').open) { S.dirty = true; return; }
+    if (typing() || drag || $('#cardDialog').open || $('#membersDialog').open || $('#archiveDialog').open) { S.dirty = true; return; }
     renderBoard();
   }
   function flushDirty() { if (S.dirty) renderSoon(); }
   document.addEventListener('focusout', () => setTimeout(flushDirty, 60));
   $('#cardDialog').addEventListener('close', async () => { S.openCardId = null; await flushAll(); S.dirty = false; if (S.view === 'board') renderBoard(); });
   $('#membersDialog').addEventListener('close', flushDirty);
+  $('#archiveDialog').addEventListener('close', flushDirty);
   setInterval(() => { if (S.view === 'board' && !document.hidden && !typing() && !drag && !$('#cardDialog').open) resync(); }, 60000);
 
   // ---------- Guardado ----------
@@ -608,14 +733,16 @@
   function renderBoard() {
     S.dirty = false;
     document.documentElement.style.setProperty('--board-bg', S.board.bg);
+    if (S.boardView === 'calendar') { app.className = 'cal'; renderCalendar(); return; }
+    app.className = 'board';
     const keepTop = app.scrollTop;
-    app.replaceChildren(...S.lists.map(renderList), renderAddList());
+    app.replaceChildren(...S.lists.filter(l => !l.archived).map(renderList), renderAddList());
     app.scrollTop = keepTop;
     applySearch();
   }
 
   function renderList(list) {
-    const cards = S.cards.filter(c => c.list_id === list.id);
+    const cards = S.cards.filter(c => c.list_id === list.id && !c.archived);
     const cardsEl = el('div', { class: 'cards' }, cards.map(renderCard));
     const root = el('section', { class: 'list', 'data-id': list.id });
 
@@ -627,11 +754,10 @@
     const grip = touchUI ? el('span', { class: 'grip', title: 'Arrastrar lista', 'aria-label': 'Arrastrar lista' }, '⠿') : null;
     const head = el('div', { class: 'list-head', draggable: !touchUI },
       grip, title, el('span', { class: 'count' }, String(cards.length)),
-      el('button', { class: 'icon-btn', title: 'Eliminar lista', onclick: () => {
-        if (!confirm(`¿Eliminar la lista "${list.title}" y sus ${cards.length} tarjetas?`)) return;
-        S.lists = S.lists.filter(l => l !== list); S.cards = S.cards.filter(c => c.list_id !== list.id);
-        renderBoard(); run(sb.from('lists').delete().eq('id', list.id));
-      } }, '🗑'));
+      el('button', { class: 'icon-btn', title: 'Archivar lista', onclick: () => {
+        list.archived = true; renderBoard(); toast('Lista archivada. Puedes recuperarla en 🗄 Archivados.');
+        run(sb.from('lists').update({ archived: true }).eq('id', list.id));
+      } }, '🗄'));
 
     if (grip) touchDrag(grip, 'list', list.id, { root, delay: 0, label: list.title });
     head.addEventListener('dragstart', e => {
@@ -669,7 +795,7 @@
 
   function dropCard(cardId, listId, beforeId) {
     const card = S.cards.find(c => c.id === cardId); if (!card) return;
-    const sibs = S.cards.filter(c => c.list_id === listId && c.id !== cardId).sort(byPos);
+    const sibs = S.cards.filter(c => c.list_id === listId && c.id !== cardId && !c.archived).sort(byPos);
     let idx = beforeId ? sibs.findIndex(c => c.id === beforeId) : sibs.length;
     if (idx < 0) idx = sibs.length;
     patchCard(card, { list_id: listId, pos: posBetween(sibs, idx) }, true);
@@ -677,8 +803,9 @@
   }
   function dropList(listId, ontoId) {
     const list = S.lists.find(l => l.id === listId); if (!list || listId === ontoId) return;
-    const to = S.lists.findIndex(l => l.id === ontoId);
-    const sibs = S.lists.filter(l => l.id !== listId);
+    const vis = S.lists.filter(l => !l.archived);
+    const to = vis.findIndex(l => l.id === ontoId);
+    const sibs = vis.filter(l => l.id !== listId);
     list.pos = posBetween(sibs, Math.min(to, sibs.length));
     S.lists.sort(byPos);
     run(sb.from('lists').update({ pos: list.pos }).eq('id', list.id));
@@ -686,7 +813,7 @@
 
   function renderCard(card) {
     const n = el('article', { class: 'card', draggable: !touchUI, 'data-id': card.id, tabindex: 0 });
-    if (card.labels.length) n.append(el('div', { class: 'labels' }, card.labels.map(c => el('span', { class: 'label', style: `background:${c}` }))));
+    if (card.labels.length) n.append(el('div', { class: 'labels' }, card.labels.map(c => { const nm = labelName(c); return el('span', { class: 'label' + (nm ? ' named' : ''), style: `background:${c}`, title: nm || COLOR_NAMES[c] || '' }, nm || ''); })));
     n.append(el('div', {}, card.title));
     const badges = [];
     if (card.due) badges.push(el('span', { class: 'badge' + (card.done ? ' done' : card.due < todayStr() ? ' overdue' : '') }, (card.done ? '✓ ' : '🕒 ') + fmtDate(card.due)));
@@ -769,14 +896,89 @@
   }
 
   // ---------- Búsqueda, nombre y exportación ----------
-  function applySearch() {
+  const passes = c => {
     const q = $('#search').value.trim().toLowerCase();
+    const f = S.filter;
+    if (q && !(c.title + ' ' + c.description).toLowerCase().includes(q)) return false;
+    if (f.who === 'me' && !c.assignees.includes(S.user.id)) return false;
+    if (f.who === 'none' && c.assignees.length) return false;
+    if (f.who && f.who !== 'me' && f.who !== 'none' && !c.assignees.includes(f.who)) return false;
+    if (f.label && !c.labels.includes(f.label)) return false;
+    if (f.overdue && !(c.due && c.due < todayStr() && !c.done)) return false;
+    return true;
+  };
+  function applySearch() {
     app.querySelectorAll('.card').forEach(n => {
       const c = S.cards.find(x => x.id === n.dataset.id);
-      n.classList.toggle('hidden', !!q && !(c && (c.title + ' ' + c.description).toLowerCase().includes(q)));
+      n.classList.toggle('hidden', !(c && passes(c)));
     });
+    const active = (S.filter.who ? 1 : 0) + (S.filter.label ? 1 : 0) + (S.filter.overdue ? 1 : 0);
+    setTool($('#filterBtn'), '⚑', 'Filtros' + (active ? ` (${active})` : ''));
   }
-  $('#search').addEventListener('input', applySearch);
+  const applyFilters = () => { if (S.boardView === 'calendar') renderCalendar(); else applySearch(); };
+  $('#search').addEventListener('input', applyFilters);
+
+  function renderFilters() {
+    const box = $('#filters');
+    box.hidden = !(S.view === 'board' && S.filtersOpen);
+    setTool($('#filterBtn'), '⚑', 'Filtros');
+    if (box.hidden) return;
+    const f = S.filter;
+    const who = el('select', { 'aria-label': 'Persona', onchange: e => { f.who = e.target.value; applyFilters(); } },
+      el('option', { value: '' }, 'Todas las personas'), el('option', { value: 'me' }, 'Yo'), el('option', { value: 'none' }, 'Sin asignar'),
+      S.members.filter(m => m.user_id !== S.user.id).map(m => el('option', { value: m.user_id }, nameOf(m.profiles, 'Usuario'))));
+    who.value = f.who;
+    const label = el('select', { 'aria-label': 'Etiqueta', onchange: e => { f.label = e.target.value; applyFilters(); } },
+      el('option', { value: '' }, 'Todas las etiquetas'), COLORS.map(c => el('option', { value: c }, labelName(c) || COLOR_NAMES[c])));
+    label.value = f.label;
+    const od = el('label', { class: 'row', style: 'gap:6px' }, el('input', { type: 'checkbox', checked: f.overdue, onchange: e => { f.overdue = e.target.checked; applyFilters(); } }), 'Solo vencidas');
+    const clear = el('button', { class: 'btn', onclick: () => { S.filter = { who: '', label: '', overdue: false }; renderFilters(); applyFilters(); } }, 'Limpiar');
+    box.replaceChildren(who, label, od, clear);
+    applyFilters();
+  }
+  $('#filterBtn').addEventListener('click', () => { S.filtersOpen = !S.filtersOpen; renderFilters(); });
+
+  // ---------- Calendario ----------
+  function updateViewBtn() { S.boardView === 'calendar' ? setTool($('#viewBtn'), '▦', 'Tablero') : setTool($('#viewBtn'), '📅', 'Calendario'); }
+  $('#viewBtn').addEventListener('click', () => {
+    S.boardView = S.boardView === 'calendar' ? 'board' : 'calendar';
+    history.replaceState(null, '', location.pathname + '?b=' + encodeURIComponent(S.boardId) + (S.boardView === 'calendar' ? '&v=calendario' : ''));
+    updateViewBtn(); renderBoard();
+  });
+
+  function renderCalendar() {
+    const keepTop = app.scrollTop;
+    const m = S.calMonth, y = m.getFullYear(), mo = m.getMonth();
+    const iso = d => new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+    const offset = (new Date(y, mo, 1).getDay() + 6) % 7; // la semana empieza en lunes
+    const days = new Date(y, mo + 1, 0).getDate();
+    const weeks = Math.ceil((offset + days) / 7);
+    const today = todayStr();
+    const archivedList = id => (S.lists.find(l => l.id === id) || {}).archived;
+    const byDay = {};
+    S.cards.filter(c => c.due && !c.archived && !archivedList(c.list_id) && passes(c)).forEach(c => (byDay[c.due] = byDay[c.due] || []).push(c));
+    const pill = c => el('div', { class: 'pill' + (c.done ? ' done' : c.due < today ? ' late' : ''), style: `--c:${c.labels[0] || 'var(--accent)'}`, title: c.title,
+      onclick: () => openCard(c.id) }, c.title);
+    const cells = [];
+    for (let i = 0; i < weeks * 7; i++) {
+      const d = new Date(y, mo, 1 - offset + i), key = iso(d);
+      cells.push(el('div', { class: 'calday' + (d.getMonth() !== mo ? ' out' : '') + (key === today ? ' today' : '') },
+        el('span', { class: 'n' }, String(d.getDate())), (byDay[key] || []).map(pill)));
+    }
+    const prefix = `${y}-${String(mo + 1).padStart(2, '0')}-`;
+    const agenda = Object.keys(byDay).filter(k => k.startsWith(prefix)).sort().map(k => [
+      el('h4', {}, cap(new Date(k + 'T00:00:00').toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' }))), byDay[k].map(pill)]);
+    const nav = n => () => { S.calMonth = new Date(y, mo + n, 1); renderCalendar(); };
+    app.replaceChildren(el('div', { class: 'calwrap' },
+      el('div', { class: 'calhead' },
+        el('button', { class: 'btn', onclick: nav(-1), 'aria-label': 'Mes anterior' }, '◀'),
+        el('h2', {}, cap(m.toLocaleDateString('es', { month: 'long', year: 'numeric' }))),
+        el('button', { class: 'btn', onclick: () => { const n = new Date(); S.calMonth = new Date(n.getFullYear(), n.getMonth(), 1); renderCalendar(); } }, 'Hoy'),
+        el('button', { class: 'btn', onclick: nav(1), 'aria-label': 'Mes siguiente' }, '▶')),
+      el('div', { class: 'calgrid' }, ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(n => el('div', { class: 'dow' }, n)), cells),
+      el('div', { class: 'agenda' }, agenda.length ? agenda : el('p', { class: 'muted' }, 'No hay tareas con fecha este mes.'))));
+    app.scrollTop = keepTop;
+  }
 
   $('#boardName').addEventListener('change', e => {
     const name = e.target.value.trim();
@@ -786,8 +988,8 @@
   });
 
   $('#exportBtn').addEventListener('click', () => {
-    const data = { board: { name: S.board.name }, lists: S.lists.map(l => ({ title: l.title,
-      cards: S.cards.filter(c => c.list_id === l.id).map(c => ({ title: c.title, description: c.description, labels: c.labels, due: c.due, checklist: c.checklist })) })) };
+    const data = { board: { name: S.board.name }, lists: S.lists.filter(l => !l.archived).map(l => ({ title: l.title,
+      cards: S.cards.filter(c => c.list_id === l.id && !c.archived).map(c => ({ title: c.title, description: c.description, labels: c.labels, due: c.due, checklist: c.checklist })) })) };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const a = el('a', { href: url, download: `${S.board.name.replace(/[^\w-]+/g, '_')}-${todayStr()}.json` });
     document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(url);
@@ -811,10 +1013,11 @@
       oninput: e => patchCard(card, { description: e.target.value }) });
     const due = el('input', { type: 'date', value: card.due || '', onchange: e => patchCard(card, { due: e.target.value || null }) });
 
-    const swatches = el('div', { class: 'swatches' }, COLORS.map(c => {
-      const s = el('button', { class: 'swatch' + (card.labels.includes(c) ? ' on' : ''), style: `background:${c}`, 'aria-label': 'Etiqueta ' + c,
-        onclick: () => { patchCard(card, { labels: card.labels.includes(c) ? card.labels.filter(x => x !== c) : [...card.labels, c] }); s.classList.toggle('on'); } });
-      return s;
+    const swatches = el('div', { class: 'chips' }, COLORS.map(c => {
+      const b = el('button', { class: 'lbl' + (card.labels.includes(c) ? ' on' : ''),
+        onclick: () => { patchCard(card, { labels: card.labels.includes(c) ? card.labels.filter(x => x !== c) : [...card.labels, c] }); b.classList.toggle('on'); } },
+        el('span', { class: 'dot', style: `background:${c}` }), labelName(c) || COLOR_NAMES[c]);
+      return b;
     }));
 
     const people = el('div', { class: 'chips' }, S.members.map(m => {
@@ -852,7 +1055,7 @@
       const last = S.cards.filter(c => c.list_id === e.target.value).sort(byPos).pop();
       patchCard(card, { list_id: e.target.value, pos: last ? last.pos + STEP : STEP }, true);
       S.cards.sort(byPos);
-    } }, S.lists.map(l => el('option', { value: l.id, selected: l === list }, l.title)));
+    } }, S.lists.filter(l => !l.archived).map(l => el('option', { value: l.id, selected: l === list }, l.title)));
 
     const commentsBox = el('div', { 'data-comments': '1' });
     const newComment = el('textarea', { placeholder: 'Escribe un comentario…', maxLength: 5000, style: 'min-height:56px' });
@@ -878,13 +1081,9 @@
       el('div', {}, el('h3', {}, 'Mover a'), moveSel),
       el('div', {}, el('h3', {}, 'Comentarios'), newComment, el('div', { class: 'row', style: 'margin-top:6px' }, sendComment), commentsBox),
       el('div', { class: 'modal-foot' },
-        el('button', { class: 'btn danger', onclick: () => {
-          if (!confirm('¿Eliminar esta tarjeta?')) return;
-          pending.delete(card.id);
-          S.cards = S.cards.filter(c => c !== card);
-          run(sb.from('cards').delete().eq('id', card.id));
-          cardDlg.close();
-        } }, 'Eliminar tarjeta'),
+        el('button', { class: 'btn', onclick: () => {
+          patchCard(card, { archived: true }, true); toast('Tarjeta archivada. Puedes recuperarla en 🗄 Archivados.'); cardDlg.close();
+        } }, '🗄 Archivar tarjeta'),
         el('button', { class: 'btn primary', onclick: () => cardDlg.close() }, 'Listo')));
     cardDlg.showModal();
     loadComments(card.id);
@@ -944,6 +1143,16 @@
       owner ? el('div', {}, el('h3', {}, 'Invitar por correo'),
         el('div', { class: 'row' }, email, invite),
         el('p', { class: 'muted', style: 'margin:6px 0 0;font-size:12px' }, 'La persona debe tener ya una cuenta (el administrador la invita desde Supabase).')) : null,
+      el('div', {}, el('h3', {}, 'Nombre de las etiquetas'), COLORS.map(c => el('div', { class: 'row', style: 'margin:4px 0' },
+        el('span', { style: `background:${c};width:28px;height:18px;border-radius:4px;display:inline-block;flex:none` }),
+        el('input', { type: 'text', placeholder: COLOR_NAMES[c], value: labelName(c), maxLength: 30,
+          style: 'flex:1;min-width:0;background:var(--card);border:2px solid var(--line);border-radius:6px;padding:4px 8px',
+          onchange: e => {
+            const names = { ...(S.board.label_names || {}) }, v = e.target.value.trim();
+            if (v) names[c] = v; else delete names[c];
+            S.board.label_names = names;
+            run(sb.from('boards').update({ label_names: names }).eq('id', S.boardId));
+          } })))),
       el('div', {}, el('h3', {}, 'Color del tablero'), bgs),
       el('div', { class: 'modal-foot' },
         owner
@@ -957,6 +1166,42 @@
             } }, 'Salir del tablero'),
         el('button', { class: 'btn primary', onclick: () => memDlg.close() }, 'Cerrar')));
   }
+
+  // ---------- Archivados ----------
+  const arcDlg = $('#archiveDialog'), arcModal = $('#archiveModal');
+  arcDlg.addEventListener('click', e => { if (e.target === arcDlg) arcDlg.close(); });
+  $('#archiveBtn').addEventListener('click', () => { renderArchive(); arcDlg.showModal(); });
+  function renderArchive() {
+    const lists = S.lists.filter(l => l.archived), cards = S.cards.filter(c => c.archived);
+    const row = (title, sub, restore, remove) => el('div', { class: 'member' },
+      el('div', { class: 'info' }, title, sub ? el('div', { class: 'muted' }, sub) : null),
+      el('button', { class: 'btn', onclick: restore }, 'Restaurar'), el('button', { class: 'btn danger', onclick: remove }, 'Eliminar'));
+    arcModal.replaceChildren(...[
+      el('h3', {}, `Listas archivadas (${lists.length})`),
+      lists.length ? lists.map(l => row(l.title, `${S.cards.filter(c => c.list_id === l.id).length} tarjetas`,
+        () => { l.archived = false; run(sb.from('lists').update({ archived: false }).eq('id', l.id)); renderArchive(); },
+        () => {
+          if (!confirm(`¿Eliminar para siempre la lista "${l.title}" y sus tarjetas?`)) return;
+          S.lists = S.lists.filter(x => x !== l); S.cards = S.cards.filter(c => c.list_id !== l.id);
+          run(sb.from('lists').delete().eq('id', l.id)); renderArchive();
+        })) : el('p', { class: 'muted', style: 'margin:0' }, 'Ninguna'),
+      el('h3', {}, `Tarjetas archivadas (${cards.length})`),
+      cards.length ? cards.map(c => row(c.title, (S.lists.find(l => l.id === c.list_id) || {}).title,
+        () => {
+          const l = S.lists.find(x => x.id === c.list_id);
+          patchCard(c, { archived: false }, true);
+          if (l && l.archived) { l.archived = false; run(sb.from('lists').update({ archived: false }).eq('id', l.id)); }
+          renderArchive();
+        },
+        () => {
+          if (!confirm(`¿Eliminar para siempre la tarjeta "${c.title}"?`)) return;
+          S.cards = S.cards.filter(x => x !== c); run(sb.from('cards').delete().eq('id', c.id)); renderArchive();
+        })) : el('p', { class: 'muted', style: 'margin:0' }, 'Ninguna'),
+      el('div', { class: 'modal-foot' }, el('span'), el('button', { class: 'btn primary', onclick: () => arcDlg.close() }, 'Cerrar'))].flat(Infinity));
+  }
+
+  // ---------- App instalable ----------
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 
   // ---------- Cita bíblica del día (Reina-Valera 1960) ----------
   (() => {

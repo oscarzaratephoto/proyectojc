@@ -27,6 +27,23 @@ Tablero tipo Trello con usuarios, contraseñas y tableros compartidos. Es una p�
 - Quien no es propietario puede salir del tablero; solo el propietario puede eliminarlo o invitar.
 - "¿Olvidaste tu contraseña?" envía un enlace para elegir una nueva.
 
+## Actualizaciones de la base de datos
+
+Cada cambio que necesita tocar la base de datos viene en un archivo de `supabase/`. Ejecútalos en orden, una sola vez cada uno, en *SQL Editor*:
+
+1. `schema.sql` (tablas y seguridad)
+2. `notifications.sql` (avisos por correo)
+3. `update_2.sql` (archivar y nombres de etiquetas)
+
+## Funciones de la app
+
+- **Mis tareas**: todo lo que tienes asignado en todos los tableros, agrupado en vencidas, hoy, próximas y sin fecha.
+- **Archivar** tarjetas y listas en vez de borrarlas; se recuperan desde **🗄 Archivados**.
+- **Filtros** por persona, etiqueta y vencidas; búsqueda por texto.
+- **Etiquetas con nombre** por tablero (en **👥 Miembros → Nombre de las etiquetas**).
+- **Calendario** del tablero con las fechas límite (en el móvil se muestra como agenda).
+- **App instalable**: en el móvil, abre la web y elige *Añadir a pantalla de inicio* (iPhone: botón Compartir) para usarla a pantalla completa.
+
 ## Avisos por correo
 
 - Al **asignar una tarjeta**, la persona asignada recibe un correo (no se avisa a quien se asigna a sí mismo).
