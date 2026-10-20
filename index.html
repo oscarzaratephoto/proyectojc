@@ -164,6 +164,10 @@
   .member { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
   .member .avatar { border: 0; margin: 0; }
   .member .info { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .verse { flex: none; padding: 5px 14px; text-align: center; font-size: 12.5px; color: var(--muted); background: var(--topbar); border-bottom: 1px solid var(--line); cursor: pointer; }
+  .verse .txt { font-style: italic; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .verse.open .txt { -webkit-line-clamp: unset; }
+  .verse .ref { font-style: normal; font-weight: 600; white-space: nowrap; }
   #toasts {
     position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 10;
     display: flex; flex-direction: column; gap: 6px; align-items: center; max-width: 90vw; pointer-events: none;
@@ -187,6 +191,8 @@
   <button class="btn" id="logoutBtn">Salir</button>
 </header>
 
+<div class="verse" id="verse" title="Toca para ver completo"><span class="txt"></span></div>
+
 <main id="app"></main>
 
 <dialog id="cardDialog"><div class="modal" id="cardModal"></div></dialog>
@@ -194,6 +200,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
+<script src="versiculos.js"></script>
 <script>
 (() => {
   'use strict';
@@ -950,6 +957,18 @@
             } }, 'Salir del tablero'),
         el('button', { class: 'btn primary', onclick: () => memDlg.close() }, 'Cerrar')));
   }
+
+  // ---------- Cita bíblica del día (Reina-Valera 1960) ----------
+  (() => {
+    const d = new Date();
+    const day = Math.floor((d - d.getTimezoneOffset() * 6e4) / 864e5);
+    const box = $('#verse');
+    const list = window.VERSES || [];
+    if (!list.length) { box.hidden = true; return; }
+    const [text, ref] = list[day % list.length];
+    $('.txt', box).replaceChildren(`“${text}” `, el('span', { class: 'ref' }, '— ' + ref));
+    box.addEventListener('click', () => box.classList.toggle('open'));
+  })();
 
   // ---------- Tema ----------
   const applyTheme = t => document.documentElement.dataset.theme = t;
